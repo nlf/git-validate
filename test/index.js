@@ -67,6 +67,14 @@ describe('exports', function () {
         done();
     });
 
+    it('does not blow up when attempting to search a non-existing directory', function (done) {
+
+        var projects = Hook.findProjects(Path.join(__dirname, 'nothing_here'));
+        expect(projects).to.be.an('array');
+        expect(projects).to.have.length(0);
+        done();
+    });
+
     after(function (done) {
 
         Fs.rmdirSync(Path.join(__dirname, '.git'));
