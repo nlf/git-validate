@@ -8,16 +8,6 @@ var expect = Lab.expect;
 var describe = lab.experiment;
 var it = lab.test;
 
-var internals = {};
-
-
-internals.getMatcher = function () {
-
-    var sep = new RegExp(Path.sep, 'g');
-    var path = Path.join.apply(null, arguments).replace(sep, '\\' + Path.sep);
-    return new RegExp(path + '$');
-};
-
 
 describe('exports', function () {
 
