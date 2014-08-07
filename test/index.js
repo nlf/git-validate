@@ -39,6 +39,13 @@ describe('exports', function () {
         done();
     });
 
+    it('returns undefined when not in a git repository', function (done) {
+
+        var root = Hook.findGitRoot(Path.sep);
+        expect(root).to.be.undefined;
+        done();
+    });
+
     it('can find a project root', function (done) {
 
         var root = Hook.findProjectRoot(__dirname);
