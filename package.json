@@ -23,6 +23,6 @@
   },
   "homepage": "https://github.com/nlf/commit-thingy",
   "devDependencies": {
-    "lab": "^3.2.3"
+    "lab": "4.x.x"
   }
 }
