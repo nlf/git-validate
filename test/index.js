@@ -25,7 +25,7 @@ describe('exports', function () {
 
         var root = Hook.findGitRoot(__dirname);
         expect(root).to.be.a('string');
-        expect(root).to.match(internals.getMatcher(__dirname));
+        expect(root).to.equal(__dirname);
         done();
     });
 
@@ -33,7 +33,7 @@ describe('exports', function () {
 
         var root = Hook.findGitRoot(Path.join(__dirname, 'projects'));
         expect(root).to.be.a('string');
-        expect(root).to.match(internals.getMatcher(__dirname));
+        expect(root).to.equal(__dirname);
         done();
     });
 
@@ -41,7 +41,7 @@ describe('exports', function () {
 
         var root = Hook.findProjectRoot(__dirname);
         expect(root).to.be.a('string');
-        expect(root).to.match(internals.getMatcher(__dirname));
+        expect(root).to.equal(__dirname);
         done();
     });
 
@@ -49,7 +49,7 @@ describe('exports', function () {
 
         var root = Hook.findProjectRoot(Path.join(__dirname, 'projects', 'project6', 'node_modules', 'nope'));
         expect(root).to.be.a('string');
-        expect(root).to.match(internals.getMatcher(__dirname, 'projects', 'project6'));
+        expect(root).to.equal(Path.join(__dirname, 'projects', 'project6'));
         done();
     });
 
