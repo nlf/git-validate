@@ -1,5 +1,6 @@
 var Hook = require('../');
 var Path = require('path');
+var Fs = require('fs');
 
 var Lab = require('lab');
 
@@ -7,9 +8,19 @@ var lab = exports.lab = Lab.script();
 var expect = Lab.expect;
 var describe = lab.experiment;
 var it = lab.test;
+var before = lab.before;
 
 
 describe('exports', function () {
+
+    before(function (done) {
+
+        if (!Fs.existsSync(Path.join(__dirname, '.git'))) {
+            Fs.mkdirSync(Path.join(__dirname, '.git'));
+        }
+
+        done();
+    });
 
     it('can find a git root', function (done) {
 
