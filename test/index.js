@@ -9,6 +9,7 @@ var expect = Lab.expect;
 var describe = lab.experiment;
 var it = lab.test;
 var before = lab.before;
+var after = lab.after;
 
 
 describe('exports', function () {
@@ -63,6 +64,12 @@ describe('exports', function () {
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project2'));
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project3', 'api'));
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project4', 'even', 'deeper', 'thing'));
+        done();
+    });
+
+    after(function (done) {
+
+        Fs.rmdirSync(Path.join(__dirname, '.git'));
         done();
     });
 });
