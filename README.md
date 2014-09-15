@@ -38,9 +38,8 @@ module to perform basic tasks.
 (in a subdirectory, perhaps?) in `.git/hooks` where the pre-commit hook installed by `commit-thingy`
 will find it and run it before a commit.
 
-`addFile(filename, path)` will...(Hey, Nathan, can you fill this in?)
-
-`deleteFile(filename, path)` will...not exist? Or what? (Hi, Nathan!)
+`addFile(filePath, options)` will add a file (specified by `filePath`) that should be executed by the hook. 
+`options` may contain an `overwrite` property (default: `false`) that, if `true`, will cause the code to overwrite an existing hook file of the same name rather than create a new hook file.
 
 # A note on the name
 
