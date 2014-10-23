@@ -19,6 +19,7 @@ describe('exports', function () {
 
         if (!Fs.existsSync(Path.join(__dirname, '.git'))) {
             Fs.mkdirSync(Path.join(__dirname, '.git'));
+            Fs.mkdirSync(Path.join(__dirname, '.git', 'hooks'));
         }
 
         done();
@@ -51,7 +52,7 @@ describe('exports', function () {
 
         var root = Hook.findProjectRoot(__dirname);
         expect(root).to.be.a.string();
-        expect(root).to.equal(__dirname);
+        expect(root).to.equal(Path.dirname(__dirname));
         done();
     });
 
@@ -67,11 +68,12 @@ describe('exports', function () {
 
         var projects = Hook.findProjects(Path.join(__dirname, 'projects'));
         expect(projects).to.be.an.array();
-        expect(projects).to.have.length(4);
+        expect(projects).to.have.length(5);
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project1'));
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project2'));
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project3', 'api'));
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project4', 'even', 'deeper', 'thing'));
+        expect(projects).to.contain(Path.join(__dirname, 'projects', 'project6'));
         done();
     });
 
@@ -85,13 +87,14 @@ describe('exports', function () {
 
     it('can add a file to a project root', function (done) {
 
-        expect(Hook.addFile('./test.txt', 'projects/project1/test.txt')).to.be.undefined();
+        expect(Hook.addFile('./test/test.txt', 'test/projects/project1/test.txt')).to.be.undefined();
+        expect(Fs.existsSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'))).to.be.true();
         done();
     });
 
     it('refuses to copy a file above the project root', function (done) {
 
-        var err = Hook.addFile('./test.txt', '../test.txt');
+        var err = Hook.addFile('./test/test.txt', '../test.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('Destination must be within project root');
         done();
@@ -99,7 +102,7 @@ describe('exports', function () {
 
     it('refuses to overwrite a file by default', function (done) {
 
-        var err = Hook.addFile('./test.txt', './test.txt');
+        var err = Hook.addFile('./test/test.txt', './test/test.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('already exists');
         done();
@@ -107,7 +110,7 @@ describe('exports', function () {
 
     it('will overwrite a file if overwrite = true', function (done) {
 
-        expect(Hook.addFile('./test.txt', './test.txt', { overwrite: true })).to.be.undefined();
+        expect(Hook.addFile('./test/test.txt', './test/test.txt', { overwrite: true })).to.be.undefined();
         done();
     });
 
@@ -130,15 +133,67 @@ describe('exports', function () {
     it('can override the root directory when copying a file', function (done) {
 
         expect(Hook.addFile(Path.join(__dirname, 'projects', 'project1'), './package.json', './package.json2')).to.be.undefined();
+        expect(Fs.existsSync(Path.join(__dirname, 'projects', 'project1', 'package.json2'))).to.be.true();
         expect(Hook.addFile(Path.join(__dirname, 'projects', 'project1'), './package.json', './package.json', { overwrite: true })).to.be.undefined();
+        done();
+    });
+
+    it('errors when the pre-commit.d directory cannot be created', function (done) {
+
+        Fs.writeFileSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d'), 'error', 'utf8');
+        var err = Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-hook.js');
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('file already exists');
+        Fs.unlinkSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d'));
+        done();
+    });
+
+    it('can register a hook', function (done) {
+
+        expect(Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-hook.js')).to.be.undefined();
+        var pkg = Fs.readFileSync(Path.join(__dirname, 'projects', 'project6', 'package.json'), 'utf8');
+        expect(pkg).to.contain('test-hook');
+        expect(pkg).to.not.contain('test-hook.js');
+        done();
+    });
+
+    it('can register a second hook', function (done) {
+
+        expect(Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-second-hook.js')).to.be.undefined();
+        var pkg = Fs.readFileSync(Path.join(__dirname, 'projects', 'project6', 'package.json'), 'utf8');
+        expect(pkg).to.contain('test-hook');
+        expect(pkg).to.contain('test-second-hook');
+        expect(pkg).to.not.contain('test-hook.js');
+        expect(pkg).to.not.contain('test-second-hook.js');
+        done();
+    });
+
+    it('errors when the given hook does not exist', function (done) {
+
+        var err = Hook.registerHook('hooks/test-missing-hook.js');
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('no such file');
+        done();
+    });
+
+    it('errors when the given hook is above the module root', function (done) {
+
+        var err = Hook.registerHook('../hooks/test-missing-hook.js');
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('may not be above project root');
         done();
     });
 
     after(function (done) {
 
+        Fs.unlinkSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d', 'test-second-hook.js'));
+        Fs.unlinkSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d', 'test-hook.js'));
+        Fs.rmdirSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d'));
+        Fs.rmdirSync(Path.join(__dirname, '.git', 'hooks'));
         Fs.rmdirSync(Path.join(__dirname, '.git'));
         Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'));
         Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'package.json2'));
+        Fs.writeFileSync(Path.join(__dirname, 'projects', 'project6', 'package.json'), '{}', 'utf8');
         done();
     });
 });

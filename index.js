@@ -10,7 +10,49 @@ var Cp = require('child_process');
 var internals = {};
 
 
-exports.registerHook = function (filename) {
+// Given a filename, copies the file to the git root's .git/hooks/pre-commit.d directory,
+// also modifies the current project's package.json file to add the hook.
+
+exports.registerHook = function (root, source) {
+
+    if (arguments.length === 1) {
+        source = root;
+        root = Path.dirname(module.parent.filename);
+    }
+
+    var rootDir = Path.dirname(module.parent.filename);
+    var gitRoot = exports.findGitRoot(root);
+    var projectRoot = exports.findProjectRoot(root);
+    var precommitDir = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d');
+    var sourcePath = Path.resolve(rootDir, source);
+    var packagePath = Path.join(projectRoot, 'package.json');
+
+    var matcher = new RegExp('^' + rootDir.replace('/', '\/') + '\/.*$');
+    if (!matcher.test(sourcePath)) {
+        return new Error('Source file may not be above project root: ' + projectRoot);
+    }
+
+    if (!internals.isDir(precommitDir)) {
+        try {
+            Fs.mkdirSync(precommitDir);
+        }
+        catch (e) {
+            return e;
+        }
+    }
+
+    try {
+        var fileContent = Fs.readFileSync(sourcePath);
+        Fs.writeFileSync(Path.join(precommitDir, Path.basename(sourcePath)), fileContent);
+
+        var projectPackage = require(packagePath);
+        projectPackage.precommit = projectPackage.precommit || [];
+        projectPackage.precommit.push(Path.basename(source).replace(/\.[a-zA-Z0-9]+$/, ''));
+        Fs.writeFileSync(packagePath, JSON.stringify(projectPackage), 'utf8');
+    }
+    catch (e) {
+        return e;
+    }
 };
 
 // Given a source file, and a destination path (relative to the project root),
@@ -91,14 +133,21 @@ exports.findGitRoot = function (start) {
 
 // Given a starting directory, find the root of the current project.
 // The root of the project is defined as the topmost directory that is
-// *not* contained within a directory named "node_modules"
+// *not* contained within a directory named "node_modules" that also
+// contains a file named "package.json"
 //
 // Returns a string
 
 exports.findProjectRoot = function (start) {
 
     var position = start.indexOf('node_modules');
-    return start.slice(0, position === -1 ? undefined : position - Path.sep.length);
+    var root = start.slice(0, position === -1 ? undefined : position - Path.sep.length);
+
+    while (!Fs.existsSync(Path.join(root, 'package.json'))) {
+        root = Path.dirname(root);
+    }
+
+    return root;
 };
 
 
