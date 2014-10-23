@@ -2,10 +2,11 @@ var Hook = require('../');
 var Path = require('path');
 var Fs = require('fs');
 
+var Code = require('code');
 var Lab = require('lab');
 
 var lab = exports.lab = Lab.script();
-var expect = Lab.expect;
+var expect = Code.expect;
 var describe = lab.experiment;
 var it = lab.test;
 var before = lab.before;
@@ -26,7 +27,7 @@ describe('exports', function () {
     it('can find a git root', function (done) {
 
         var root = Hook.findGitRoot(__dirname);
-        expect(root).to.be.a('string');
+        expect(root).to.be.a.string();
         expect(root).to.equal(__dirname);
         done();
     });
@@ -34,7 +35,7 @@ describe('exports', function () {
     it('can find a git root from higher up', function (done) {
 
         var root = Hook.findGitRoot(Path.join(__dirname, 'projects'));
-        expect(root).to.be.a('string');
+        expect(root).to.be.a.string();
         expect(root).to.equal(__dirname);
         done();
     });
@@ -42,14 +43,14 @@ describe('exports', function () {
     it('returns undefined when not in a git repository', function (done) {
 
         var root = Hook.findGitRoot(Path.sep);
-        expect(root).to.be.undefined;
+        expect(root).to.be.undefined();
         done();
     });
 
     it('can find a project root', function (done) {
 
         var root = Hook.findProjectRoot(__dirname);
-        expect(root).to.be.a('string');
+        expect(root).to.be.a.string();
         expect(root).to.equal(__dirname);
         done();
     });
@@ -57,7 +58,7 @@ describe('exports', function () {
     it('can find a project root from higher up', function (done) {
 
         var root = Hook.findProjectRoot(Path.join(__dirname, 'projects', 'project6', 'node_modules', 'nope'));
-        expect(root).to.be.a('string');
+        expect(root).to.be.a.string();
         expect(root).to.equal(Path.join(__dirname, 'projects', 'project6'));
         done();
     });
@@ -65,7 +66,7 @@ describe('exports', function () {
     it('can find projects', function (done) {
 
         var projects = Hook.findProjects(Path.join(__dirname, 'projects'));
-        expect(projects).to.be.an('array');
+        expect(projects).to.be.an.array();
         expect(projects).to.have.length(4);
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project1'));
         expect(projects).to.contain(Path.join(__dirname, 'projects', 'project2'));
@@ -77,7 +78,7 @@ describe('exports', function () {
     it('does not blow up when attempting to search a non-existing directory', function (done) {
 
         var projects = Hook.findProjects(Path.join(__dirname, 'nothing_here'));
-        expect(projects).to.be.an('array');
+        expect(projects).to.be.an.array();
         expect(projects).to.have.length(0);
         done();
     });
