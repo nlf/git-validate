@@ -85,8 +85,7 @@ describe('exports', function () {
 
     it('can add a file to a project root', function (done) {
 
-        var err = Hook.addFile('./test.txt', 'projects/project1/test.txt');
-        expect(err).to.be.undefined();
+        expect(Hook.addFile('./test.txt', 'projects/project1/test.txt')).to.be.undefined();
         done();
     });
 
@@ -108,8 +107,7 @@ describe('exports', function () {
 
     it('will overwrite a file if overwrite = true', function (done) {
 
-        var err = Hook.addFile('./test.txt', './test.txt', { overwrite: true });
-        expect(err).to.be.undefined();
+        expect(Hook.addFile('./test.txt', './test.txt', { overwrite: true })).to.be.undefined();
         done();
     });
 
@@ -121,10 +119,26 @@ describe('exports', function () {
         done();
     });
 
+    it('returns an error when the wrong number of parameters is given', function (done) {
+
+        var err = Hook.addFile('./bacon.txt');
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('Invalid arguments given');
+        done();
+    });
+
+    it('can override the root directory when copying a file', function (done) {
+
+        expect(Hook.addFile(Path.join(__dirname, 'projects', 'project1'), './package.json', './package.json2')).to.be.undefined();
+        expect(Hook.addFile(Path.join(__dirname, 'projects', 'project1'), './package.json', './package.json', { overwrite: true })).to.be.undefined();
+        done();
+    });
+
     after(function (done) {
 
         Fs.rmdirSync(Path.join(__dirname, '.git'));
         Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'));
+        Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'package.json2'));
         done();
     });
 });

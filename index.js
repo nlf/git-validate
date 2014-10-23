@@ -20,10 +20,30 @@ exports.registerHook = function (filename) {
 //
 // Returns null if the file was copied, an Error object with explanation if it was not
 
-exports.addFile = function (source, destination, options) {
+exports.addFile = function (root, source, destination, options) {
 
-    options = options || {};
-    var projectRoot = exports.findProjectRoot(Path.dirname(module.parent.filename));
+    if (arguments.length === 3) {
+        if (typeof destination === 'object') {
+            options = destination;
+            destination = source;
+            source = root;
+            root = Path.dirname(module.parent.filename);
+        }
+        else {
+            options = {};
+        }
+    }
+    else if (arguments.length === 2) {
+        destination = source;
+        source = root;
+        root = Path.dirname(module.parent.filename);
+        options = {};
+    }
+    else if (arguments.length < 2) {
+        return new Error('Invalid arguments given to addFile');
+    }
+
+    var projectRoot = exports.findProjectRoot(root);
     var sourcePath = Path.resolve(projectRoot, source);
     var destinationPath = Path.resolve(projectRoot, destination);
 
