@@ -85,14 +85,14 @@ describe('exports', function () {
 
     it('can add a file to a project root', function (done) {
 
-        var err = Hook.addFile(__dirname, './test.txt', 'projects/project1/test.txt');
+        var err = Hook.addFile('./test.txt', 'projects/project1/test.txt');
         expect(err).to.be.undefined();
         done();
     });
 
     it('refuses to copy a file above the project root', function (done) {
 
-        var err = Hook.addFile(__dirname, './test.txt', '../test.txt');
+        var err = Hook.addFile('./test.txt', '../test.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('Destination must be within project root');
         done();
@@ -100,7 +100,7 @@ describe('exports', function () {
 
     it('refuses to overwrite a file by default', function (done) {
 
-        var err = Hook.addFile(__dirname, './test.txt', './test.txt');
+        var err = Hook.addFile('./test.txt', './test.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('already exists');
         done();
@@ -108,14 +108,14 @@ describe('exports', function () {
 
     it('will overwrite a file if overwrite = true', function (done) {
 
-        var err = Hook.addFile(__dirname, './test.txt', './test.txt', { overwrite: true });
+        var err = Hook.addFile('./test.txt', './test.txt', { overwrite: true });
         expect(err).to.be.undefined();
         done();
     });
 
     it('returns an error when trying to copy a file that does not exist', function (done) {
 
-        var err = Hook.addFile(__dirname, './bacon.txt', './meats.txt');
+        var err = Hook.addFile('./bacon.txt', './meats.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('no such file');
         done();
