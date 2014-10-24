@@ -1,6 +1,7 @@
+var Fs = require('fs');
 var Hook = require('../');
 var Path = require('path');
-var Fs = require('fs');
+var Rimraf = require('rimraf');
 
 var Code = require('code');
 var Lab = require('lab');
@@ -87,14 +88,14 @@ describe('exports', function () {
 
     it('can add a file to a project root', function (done) {
 
-        expect(Hook.addFile('./test/test.txt', 'test/projects/project1/test.txt')).to.be.undefined();
+        expect(Hook.addFile('test.txt', 'test/projects/project1/test.txt')).to.be.undefined();
         expect(Fs.existsSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'))).to.be.true();
         done();
     });
 
     it('refuses to copy a file above the project root', function (done) {
 
-        var err = Hook.addFile('./test/test.txt', '../test.txt');
+        var err = Hook.addFile('test.txt', '../../test.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('Destination must be within project root');
         done();
@@ -102,7 +103,7 @@ describe('exports', function () {
 
     it('refuses to overwrite a file by default', function (done) {
 
-        var err = Hook.addFile('./test/test.txt', './test/test.txt');
+        var err = Hook.addFile('test.txt', 'test/test.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('already exists');
         done();
@@ -110,13 +111,13 @@ describe('exports', function () {
 
     it('will overwrite a file if overwrite = true', function (done) {
 
-        expect(Hook.addFile('./test/test.txt', './test/test.txt', { overwrite: true })).to.be.undefined();
+        expect(Hook.addFile('test.txt', 'test/test.txt', { overwrite: true })).to.be.undefined();
         done();
     });
 
     it('returns an error when trying to copy a file that does not exist', function (done) {
 
-        var err = Hook.addFile('./bacon.txt', './meats.txt');
+        var err = Hook.addFile('bacon.txt', 'meats.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('no such file');
         done();
@@ -124,7 +125,7 @@ describe('exports', function () {
 
     it('returns an error when the wrong number of parameters is given', function (done) {
 
-        var err = Hook.addFile('./bacon.txt');
+        var err = Hook.addFile('bacon.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('Invalid arguments given');
         done();
@@ -151,20 +152,12 @@ describe('exports', function () {
     it('can register a hook', function (done) {
 
         expect(Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-hook.js')).to.be.undefined();
-        var pkg = Fs.readFileSync(Path.join(__dirname, 'projects', 'project6', 'package.json'), 'utf8');
-        expect(pkg).to.contain('test-hook');
-        expect(pkg).to.not.contain('test-hook.js');
         done();
     });
 
     it('can register a second hook', function (done) {
 
         expect(Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-second-hook.js')).to.be.undefined();
-        var pkg = Fs.readFileSync(Path.join(__dirname, 'projects', 'project6', 'package.json'), 'utf8');
-        expect(pkg).to.contain('test-hook');
-        expect(pkg).to.contain('test-second-hook');
-        expect(pkg).to.not.contain('test-hook.js');
-        expect(pkg).to.not.contain('test-second-hook.js');
         done();
     });
 
@@ -186,14 +179,9 @@ describe('exports', function () {
 
     after(function (done) {
 
-        Fs.unlinkSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d', 'test-second-hook.js'));
-        Fs.unlinkSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d', 'test-hook.js'));
-        Fs.rmdirSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d'));
-        Fs.rmdirSync(Path.join(__dirname, '.git', 'hooks'));
-        Fs.rmdirSync(Path.join(__dirname, '.git'));
+        Rimraf.sync(Path.join(__dirname, '.git'));
         Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'));
         Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'package.json2'));
-        Fs.writeFileSync(Path.join(__dirname, 'projects', 'project6', 'package.json'), '{}', 'utf8');
         done();
     });
 });

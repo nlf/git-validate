@@ -2,7 +2,7 @@
 
 var Fs = require('fs');
 var Path = require('path');
-var Cp = require('child_process');
+var Crypto = require('crypto');
 
 
 // Declare internals
@@ -26,29 +26,25 @@ exports.registerHook = function (root, source) {
     var precommitDir = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d');
     var sourcePath = Path.resolve(rootDir, source);
     var packagePath = Path.join(projectRoot, 'package.json');
+    var relativePath = Path.relative(gitRoot, projectRoot);
+    var hash = Crypto.createHash('md5').update(relativePath).digest('hex');
 
     var matcher = new RegExp('^' + rootDir.replace('/', '\/') + '\/.*$');
     if (!matcher.test(sourcePath)) {
         return new Error('Source file may not be above project root: ' + projectRoot);
     }
 
-    if (!internals.isDir(precommitDir)) {
-        try {
+    try {
+        if (!internals.isDir(precommitDir)) {
             Fs.mkdirSync(precommitDir);
         }
-        catch (e) {
-            return e;
+
+        if (!internals.isDir(Path.join(precommitDir, hash))) {
+            Fs.mkdirSync(Path.join(precommitDir, hash));
         }
-    }
 
-    try {
         var fileContent = Fs.readFileSync(sourcePath);
-        Fs.writeFileSync(Path.join(precommitDir, Path.basename(sourcePath)), fileContent);
-
-        var projectPackage = require(packagePath);
-        projectPackage.precommit = projectPackage.precommit || [];
-        projectPackage.precommit.push(Path.basename(source).replace(/\.[a-zA-Z0-9]+$/, ''));
-        Fs.writeFileSync(packagePath, JSON.stringify(projectPackage), 'utf8');
+        Fs.writeFileSync(Path.join(precommitDir, hash, Path.basename(sourcePath)), fileContent);
     }
     catch (e) {
         return e;
