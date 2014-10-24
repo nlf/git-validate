@@ -25,9 +25,6 @@
   "devDependencies": {
     "code": "1.x.x",
     "lab": "5.x.x",
-    "rimraf": "^2.2.8"
-  },
-  "precommit": [
-    "test-hook"
-  ]
+    "rimraf": "2.x.x"
+  }
 }
