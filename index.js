@@ -86,7 +86,7 @@ exports.addFile = function (root, source, destination, options) {
     }
 
     var projectRoot = exports.findProjectRoot(root);
-    var sourcePath = Path.resolve(projectRoot, source);
+    var sourcePath = Path.resolve(root, source);
     var destinationPath = Path.resolve(projectRoot, destination);
 
     var matcher = new RegExp('^' + projectRoot.replace('/', '\/') + '\/.*$');
