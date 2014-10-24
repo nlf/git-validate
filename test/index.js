@@ -1,7 +1,10 @@
+var Crypto = require('crypto');
 var Fs = require('fs');
-var Hook = require('../');
+var Mkdirp = require('mkdirp');
+var Os = require('os');
 var Path = require('path');
 var Rimraf = require('rimraf');
+var Validate = require('../');
 
 var Code = require('code');
 var Lab = require('lab');
@@ -14,88 +17,151 @@ var before = lab.before;
 var after = lab.after;
 
 
-describe('exports', function () {
+var internals = {};
+internals.fixtureDir = Path.join(__dirname, 'fixtures');
 
-    before(function (done) {
+internals.createFixture = function (done) {
 
-        if (!Fs.existsSync(Path.join(__dirname, '.git'))) {
-            Fs.mkdirSync(Path.join(__dirname, '.git'));
-            Fs.mkdirSync(Path.join(__dirname, '.git', 'hooks'));
+    Mkdirp.sync(Path.join(internals.fixtureDir, 'projects'));
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'test.txt'), '', 'utf8');
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'hook.js'), '', 'utf8');
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'hook2.js'), '', 'utf8');
+    Mkdirp.sync(Path.join(internals.fixtureDir, 'projects', 'project1', 'node_modules', 'nope'));
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'projects', 'project1', 'package.json'), '', 'utf8');
+    Mkdirp.sync(Path.join(internals.fixtureDir, 'projects', 'project2'));
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'projects', 'project2', 'package.json'), '', 'utf8');
+    Mkdirp.sync(Path.join(internals.fixtureDir, 'projects', 'deepproject', 'another', 'directory', 'goes', 'here'));
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'projects', 'notaproject'), '', 'utf8');
+    Mkdirp.sync(Path.join(internals.fixtureDir, '.git', 'hooks'));
+    done();
+};
+
+internals.cleanupFixture = function (done) {
+
+    Rimraf(Path.join(__dirname, 'fixtures'), done);
+};
+
+
+describe('isDir()', function () {
+
+    it('returns true when given a directory', function (done) {
+
+        expect(Validate.isDir(__dirname)).to.be.true();
+        done();
+    });
+
+    it('returns false when given a file or non-existing directory', function (done) {
+
+        expect(Validate.isDir(Path.join(__dirname, 'index.js'))).to.be.false();
+        expect(Validate.isDir(Path.join(__dirname, 'not.here'))).to.be.false();
+        done();
+    });
+});
+
+
+describe('getEnv()', function () {
+
+    it('returns a copy of the current environment with a modified path', function (done) {
+
+        var env = Validate.getEnv(__dirname);
+        for (var key in env) {
+            if (key.toLowerCase() === 'path') {
+                expect(env[key]).to.contain(Path.join(__dirname, 'node_modules', '.bin'));
+                expect(env[key]).to.contain(process.env[key]);
+            }
+            else {
+                expect(env[key]).to.equal(process.env[key]);
+            }
         }
 
         done();
     });
+});
 
-    it('can find a git root', function (done) {
+describe('runCmd()', function () {
+});
 
-        var root = Hook.findGitRoot(__dirname);
-        expect(root).to.be.a.string();
-        expect(root).to.equal(__dirname);
+describe('exit()', function () {
+});
+
+describe('registerHook()', function () {
+
+    before(internals.createFixture);
+
+    it('errors when the pre-commit.d directory cannot be created', function (done) {
+
+        var path = Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d');
+        Fs.writeFileSync(path, 'error', 'utf8');
+
+        var root = Path.join(internals.fixtureDir, 'projects', 'project1');
+        var hook = Path.join('fixtures', 'hook.js');
+
+        var err = Validate.registerHook(root, hook);
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('file already exists');
+
+        Fs.unlinkSync(path);
         done();
     });
 
-    it('can find a git root from higher up', function (done) {
+    it('can register a hook', function (done) {
 
-        var root = Hook.findGitRoot(Path.join(__dirname, 'projects'));
-        expect(root).to.be.a.string();
-        expect(root).to.equal(__dirname);
+        var root = Path.join(internals.fixtureDir, 'projects', 'project1');
+        var hook = Path.join('fixtures', 'hook.js');
+        var hash = Crypto.createHash('md5').update(Path.join('projects', 'project1')).digest('hex');
+
+        expect(Validate.registerHook(root, hook)).to.be.undefined();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, 'hook.js'))).to.be.true();
         done();
     });
 
-    it('returns undefined when not in a git repository', function (done) {
+    it('can register a second hook', function (done) {
 
-        var root = Hook.findGitRoot(Path.sep);
-        expect(root).to.be.undefined();
+        var root = Path.join(internals.fixtureDir, 'projects', 'project1');
+        var hook = Path.join('fixtures', 'hook2.js');
+        var hash = Crypto.createHash('md5').update(Path.join('projects', 'project1')).digest('hex');
+
+        expect(Validate.registerHook(root, hook)).to.be.undefined();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, 'hook.js'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, 'hook2.js'))).to.be.true();
         done();
     });
 
-    it('can find a project root', function (done) {
+    it('errors when the given hook is above the parent module root', function (done) {
 
-        var root = Hook.findProjectRoot(__dirname);
-        expect(root).to.be.a.string();
-        expect(root).to.equal(Path.dirname(__dirname));
+        var err = Validate.registerHook(Path.join('..', 'hooks', 'test-missing-hook.js'));
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('may not be above project root');
         done();
     });
 
-    it('can find a project root from higher up', function (done) {
+    after(internals.cleanupFixture);
+});
 
-        var root = Hook.findProjectRoot(Path.join(__dirname, 'projects', 'project6', 'node_modules', 'nope'));
-        expect(root).to.be.a.string();
-        expect(root).to.equal(Path.join(__dirname, 'projects', 'project6'));
-        done();
-    });
+describe('addFile()', function () {
 
-    it('can find projects', function (done) {
-
-        var projects = Hook.findProjects(Path.join(__dirname, 'projects'));
-        expect(projects).to.be.an.array();
-        expect(projects).to.have.length(5);
-        expect(projects).to.contain(Path.join(__dirname, 'projects', 'project1'));
-        expect(projects).to.contain(Path.join(__dirname, 'projects', 'project2'));
-        expect(projects).to.contain(Path.join(__dirname, 'projects', 'project3', 'api'));
-        expect(projects).to.contain(Path.join(__dirname, 'projects', 'project4', 'even', 'deeper', 'thing'));
-        expect(projects).to.contain(Path.join(__dirname, 'projects', 'project6'));
-        done();
-    });
-
-    it('does not blow up when attempting to search a non-existing directory', function (done) {
-
-        var projects = Hook.findProjects(Path.join(__dirname, 'nothing_here'));
-        expect(projects).to.be.an.array();
-        expect(projects).to.have.length(0);
-        done();
-    });
+    before(internals.createFixture);
 
     it('can add a file to a project root', function (done) {
 
-        expect(Hook.addFile('test.txt', 'test/projects/project1/test.txt')).to.be.undefined();
-        expect(Fs.existsSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'))).to.be.true();
+        var source = Path.join('fixtures', 'test.txt');
+        var dest = Path.join('test', 'fixtures', 'projects', 'project1', 'test.txt');
+
+        expect(Validate.addFile(source, dest)).to.be.undefined();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, 'projects', 'project1', 'test.txt'))).to.be.true();
         done();
     });
 
-    it('refuses to copy a file above the project root', function (done) {
+    it('refuses to copy a file outside of the project root', function (done) {
 
-        var err = Hook.addFile('test.txt', '../../test.txt');
+        var source = Path.join('fixtures', 'test.txt');
+        var dest = Path.join('..', '..', 'test.txt');
+
+        var err = Validate.addFile(source, dest);
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('Destination must be within project root');
         done();
@@ -103,85 +169,100 @@ describe('exports', function () {
 
     it('refuses to overwrite a file by default', function (done) {
 
-        var err = Hook.addFile('test.txt', 'test/test.txt');
+        var source = Path.join('fixtures', 'test.txt');
+        var dest = Path.join('test', 'fixtures', 'test.txt');
+
+        var err = Validate.addFile(source, dest);
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('already exists');
         done();
     });
 
-    it('will overwrite a file if overwrite = true', function (done) {
+    it('overwrites files if overwrite = true', function (done) {
 
-        expect(Hook.addFile('test.txt', 'test/test.txt', { overwrite: true })).to.be.undefined();
+        var source = Path.join('fixtures', 'test.txt');
+        var dest = Path.join('test', 'fixtures', 'test.txt');
+
+        expect(Validate.addFile(source, dest, { overwrite: true })).to.be.undefined();
         done();
     });
 
     it('returns an error when trying to copy a file that does not exist', function (done) {
 
-        var err = Hook.addFile('bacon.txt', 'meats.txt');
+        var err = Validate.addFile('bacon.txt', 'meats.txt');
         expect(err).to.not.be.undefined();
         expect(err.message).to.contain('no such file');
         done();
     });
 
-    it('returns an error when the wrong number of parameters is given', function (done) {
+    after(internals.cleanupFixture);
+});
 
-        var err = Hook.addFile('bacon.txt');
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('Invalid arguments given');
+describe('findGitRoot()', function () {
+
+    before(internals.createFixture);
+
+    it('can find a git root', function (done) {
+
+        expect(Validate.findGitRoot(internals.fixtureDir)).to.equal(internals.fixtureDir);
         done();
     });
 
-    it('can override the root directory when copying a file', function (done) {
+    it('can find a git root from a child directory', function (done) {
 
-        expect(Hook.addFile(Path.join(__dirname, 'projects', 'project1'), './package.json', './package.json2')).to.be.undefined();
-        expect(Fs.existsSync(Path.join(__dirname, 'projects', 'project1', 'package.json2'))).to.be.true();
-        expect(Hook.addFile(Path.join(__dirname, 'projects', 'project1'), './package.json', './package.json', { overwrite: true })).to.be.undefined();
+        expect(Validate.findGitRoot(Path.join(internals.fixtureDir, 'projects'))).to.equal(internals.fixtureDir);
         done();
     });
 
-    it('errors when the pre-commit.d directory cannot be created', function (done) {
+    it('returns undefined when not within a git repo', function (done) {
 
-        Fs.writeFileSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d'), 'error', 'utf8');
-        var err = Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-hook.js');
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('file already exists');
-        Fs.unlinkSync(Path.join(__dirname, '.git', 'hooks', 'pre-commit.d'));
+        expect(Validate.findGitRoot(Os.tmpdir())).to.be.undefined();
         done();
     });
 
-    it('can register a hook', function (done) {
+    after(internals.cleanupFixture);
+});
 
-        expect(Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-hook.js')).to.be.undefined();
+describe('findProjectRoot()', function () {
+
+    before(internals.createFixture);
+
+    it('can find a project root', function (done) {
+
+        expect(Validate.findProjectRoot(__dirname)).to.equal(Path.dirname(__dirname));
         done();
     });
 
-    it('can register a second hook', function (done) {
+    it('can find a project root from within a child module', function (done) {
 
-        expect(Hook.registerHook(Path.join(__dirname, 'projects', 'project6'), 'hooks/test-second-hook.js')).to.be.undefined();
+        expect(Validate.findProjectRoot(Path.join(internals.fixtureDir, 'projects', 'project1', 'node_modules', 'nope'))).to.equal(Path.join(internals.fixtureDir, 'projects', 'project1'));
         done();
     });
 
-    it('errors when the given hook does not exist', function (done) {
+    after(internals.cleanupFixture);
+});
 
-        var err = Hook.registerHook('hooks/test-missing-hook.js');
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('no such file');
+describe('findProjects()', function () {
+
+    before(internals.createFixture);
+
+    it('can find projects', function (done) {
+
+        var projects = Validate.findProjects(internals.fixtureDir);
+        expect(projects).to.be.an.array();
+        expect(projects).to.have.length(2);
+        expect(projects).to.contain(Path.join(internals.fixtureDir, 'projects', 'project1'));
+        expect(projects).to.contain(Path.join(internals.fixtureDir, 'projects', 'project2'));
         done();
     });
 
-    it('errors when the given hook is above the module root', function (done) {
+    it('does not blow up when attempting to search a non-existing directory', function (done) {
 
-        var err = Hook.registerHook('../hooks/test-missing-hook.js');
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('may not be above project root');
+        var projects = Validate.findProjects(Path.join(internals.fixtureDir, 'nothing_here'));
+        expect(projects).to.be.an.array();
+        expect(projects).to.have.length(0);
         done();
     });
 
-    after(function (done) {
-
-        Rimraf.sync(Path.join(__dirname, '.git'));
-        Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'test.txt'));
-        Fs.unlinkSync(Path.join(__dirname, 'projects', 'project1', 'package.json2'));
-        done();
-    });
+    after(internals.cleanupFixture);
 });

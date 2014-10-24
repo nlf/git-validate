@@ -1,14 +1,18 @@
 {
-  "name": "commit-thingy",
+  "name": "git-validate",
   "version": "0.0.0",
   "description": "the extensible core of precommit-hook",
-  "main": "index.js",
+  "main": "git-validate",
+  "bin": {
+    "install": "install"
+  },
   "scripts": {
-    "test": "make test-cov"
+    "test": "make test-cov",
+    "install": "install"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/nlf/commit-thingy.git"
+    "url": "git://github.com/nlf/git-validate.git"
   },
   "keywords": [
     "precommit",
@@ -19,12 +23,13 @@
   "author": "Nathan LaFreniere <quitlahok@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nlf/commit-thingy/issues"
+    "url": "https://github.com/nlf/git-validate/issues"
   },
-  "homepage": "https://github.com/nlf/commit-thingy",
+  "homepage": "https://github.com/nlf/git-validate",
   "devDependencies": {
     "code": "1.x.x",
     "lab": "5.x.x",
+    "mkdirp": "^0.5.0",
     "rimraf": "2.x.x"
   }
 }

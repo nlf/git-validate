@@ -1,45 +1,132 @@
-// Load modules
+#!/usr/bin/env node
 
+var Crypto = require('crypto');
+var Exec = require('child_process').exec;
 var Fs = require('fs');
 var Path = require('path');
-var Crypto = require('crypto');
 
 
-// Declare internals
+// Given a path, determine if the path is a directory
+//
+// Returns true/false
+exports.isDir = function (path) {
 
-var internals = {};
+    try {
+        var stat = Fs.statSync(path);
+        return stat.isDirectory();
+    }
+    catch (e) {
+        return false;
+    }
+};
+
+
+// Create a copy of process.env, with the PATH environment variable
+// (case insensitive) modified to include the given project's
+// node_modules/.bin directory.
+//
+// Returns an object suitable for child_process.exec
+exports.getEnv = function (projectRoot) {
+
+    // Disabling coverage on this line since we'll never be running tests
+    // in a way such that process.platform is both 'win32' and not 'win32'
+    /*$lab:coverage:off$*/
+    var pathSep = process.platform === 'win32' ? ';' : ':';
+    /*$lab:coverage:on$*/
+    var env = {};
+
+    for (var key in process.env) {
+        if (key.toLowerCase() === 'path') {
+            env[key] = Path.join(projectRoot, 'node_modules', '.bin') + pathSep + process.env[key];
+        }
+        else {
+            env[key] = process.env[key];
+        }
+    }
+
+    return env;
+};
+
+
+// Actually run the given script for the given project
+exports.runCmd = function (projectRoot, name, done) {
+
+    done = done || process.exit;
+    var env = exports.getEnv(projectRoot);
+
+    process.stdout.write('running ' + name + ': ');
+
+    var cmd = (process.platform === 'win32' ? 'cmd /c ' : 'sh -c ') + JSON.stringify(command);
+    exec(cmd, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
+        if (err) {
+            console.log('failed!');
+            console.log(stdout);
+            console.log(stderr);
+            exports.exit(err.code, process.exit);
+        } else {
+            console.log('ok.');
+            exports.exit(0, done);
+        }
+    });
+}
+
+
+// This method shamelessly adapted from https://github.com/cowboy/node-exit
+exports.exit = function (code, callback) {
+    var streams = [process.stdout, process.stderr];
+    var drainCount = 0;
+
+    function tryToExit() {
+        if (drainCount === streams.length) {
+            callback(code);
+        }
+    }
+
+    streams.forEach(function (stream) {
+        if (stream.bufferSize === 0) {
+            drainCount++;
+        } else {
+            stream.write('', 'utf-8', function () {
+                drainCount++;
+                tryToExit();
+            });
+
+            stream.write = function () {};
+        }
+    });
+
+    tryToExit();
+}
 
 
 // Given a filename, copies the file to the git root's .git/hooks/pre-commit.d directory,
 // also modifies the current project's package.json file to add the hook.
-
 exports.registerHook = function (root, source) {
 
-    if (arguments.length === 1) {
+    var parentRoot = Path.dirname(module.parent.filename);
+
+    if (!source) {
         source = root;
-        root = Path.dirname(module.parent.filename);
+        root = parentRoot;
     }
 
-    var rootDir = Path.dirname(module.parent.filename);
     var gitRoot = exports.findGitRoot(root);
     var projectRoot = exports.findProjectRoot(root);
-    var precommitDir = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d');
-    var sourcePath = Path.resolve(rootDir, source);
-    var packagePath = Path.join(projectRoot, 'package.json');
-    var relativePath = Path.relative(gitRoot, projectRoot);
-    var hash = Crypto.createHash('md5').update(relativePath).digest('hex');
+    var sourcePath = Path.resolve(parentRoot, source);
 
-    var matcher = new RegExp('^' + rootDir.replace('/', '\/') + '\/.*$');
+    var matcher = new RegExp('^' + parentRoot.replace('/', '\/') + '\/.*$');
     if (!matcher.test(sourcePath)) {
         return new Error('Source file may not be above project root: ' + projectRoot);
     }
 
     try {
-        if (!internals.isDir(precommitDir)) {
+        var precommitDir = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d');
+        if (!exports.isDir(precommitDir)) {
             Fs.mkdirSync(precommitDir);
         }
 
-        if (!internals.isDir(Path.join(precommitDir, hash))) {
+        var hash = Crypto.createHash('md5').update(Path.relative(gitRoot, projectRoot)).digest('hex');
+        if (!exports.isDir(Path.join(precommitDir, hash))) {
             Fs.mkdirSync(Path.join(precommitDir, hash));
         }
 
@@ -51,36 +138,17 @@ exports.registerHook = function (root, source) {
     }
 };
 
+
 // Given a source file, and a destination path (relative to the project root),
 // copy the source to the destination. If options.overwrite is false or not set,
 // check to see if the file exists first and do not copy if it does. If true,
 // always copy the file without checking
 //
 // Returns null if the file was copied, an Error object with explanation if it was not
+exports.addFile = function (source, destination, options) {
 
-exports.addFile = function (root, source, destination, options) {
-
-    if (arguments.length === 3) {
-        if (typeof destination === 'object') {
-            options = destination;
-            destination = source;
-            source = root;
-            root = Path.dirname(module.parent.filename);
-        }
-        else {
-            options = {};
-        }
-    }
-    else if (arguments.length === 2) {
-        destination = source;
-        source = root;
-        root = Path.dirname(module.parent.filename);
-        options = {};
-    }
-    else if (arguments.length < 2) {
-        return new Error('Invalid arguments given to addFile');
-    }
-
+    options = options || {};
+    var root = Path.dirname(module.parent.filename);
     var projectRoot = exports.findProjectRoot(root);
     var sourcePath = Path.resolve(root, source);
     var destinationPath = Path.resolve(projectRoot, destination);
@@ -111,12 +179,11 @@ exports.addFile = function (root, source, destination, options) {
 // a directory named ".git"
 //
 // Returns a string if found, otherwise undefined
-
 exports.findGitRoot = function (start) {
 
     var root;
 
-    if (internals.isDir(Path.join(start, '.git'))) {
+    if (exports.isDir(Path.join(start, '.git'))) {
         root = start;
     }
     else if (Path.dirname(start) !== start) {
@@ -133,7 +200,6 @@ exports.findGitRoot = function (start) {
 // contains a file named "package.json"
 //
 // Returns a string
-
 exports.findProjectRoot = function (start) {
 
     var position = start.indexOf('node_modules');
@@ -147,35 +213,18 @@ exports.findProjectRoot = function (start) {
 };
 
 
-// Given a path, determine if the path is a directory
-//
-// Returns true/false
-
-internals.isDir = function (path) {
-
-    try {
-        var stat = Fs.statSync(path);
-        return stat.isDirectory();
-    }
-    catch (e) {
-        return false;
-    }
-};
-
-
 // Given a root path, find a list of projects.
 // A project is defined as any directory within 4 levels of the starting
 // directory that contains a file named "package.json"
 //
 // Returns an array
-
 exports.findProjects = function (root, depth) {
 
     depth = depth || 0;
     ++depth;
 
     if (depth > 4 ||
-        !internals.isDir(root) ||
+        !exports.isDir(root) ||
         root.indexOf('node_modules') !== -1) {
 
         return [];
@@ -198,3 +247,9 @@ exports.findProjects = function (root, depth) {
 
     return projects;
 };
+
+
+// We weren't required, so perform our checks
+if (!module.parent) {
+    console.log('Running %s checks...', Path.basename(process.argv[1]));
+}
