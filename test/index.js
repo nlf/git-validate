@@ -5,6 +5,7 @@ var Os = require('os');
 var Path = require('path');
 var Rimraf = require('rimraf');
 var Validate = require('../');
+var Writable = require('stream').Writable;
 
 var Code = require('code');
 var Lab = require('lab');
@@ -24,8 +25,8 @@ internals.createFixture = function (done) {
 
     Mkdirp.sync(Path.join(internals.fixtureDir, 'projects'));
     Fs.writeFileSync(Path.join(internals.fixtureDir, 'test.txt'), '', 'utf8');
-    Fs.writeFileSync(Path.join(internals.fixtureDir, 'hook.js'), '', 'utf8');
-    Fs.writeFileSync(Path.join(internals.fixtureDir, 'hook2.js'), '', 'utf8');
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'hook.js'), '#!/usr/bin/env node\nprocess.exit();', 'utf8');
+    Fs.writeFileSync(Path.join(internals.fixtureDir, 'hook2.js'), '#!/usr/bin/env node\nprocess.exit(1);', 'utf8');
     Mkdirp.sync(Path.join(internals.fixtureDir, 'projects', 'project1', 'node_modules', 'nope'));
     Fs.writeFileSync(Path.join(internals.fixtureDir, 'projects', 'project1', 'package.json'), '', 'utf8');
     Mkdirp.sync(Path.join(internals.fixtureDir, 'projects', 'project2'));
@@ -79,6 +80,58 @@ describe('getEnv()', function () {
 });
 
 describe('runCmd()', function () {
+
+    before(function (done) {
+
+        internals.createFixture(function () {
+
+            var root = Path.join(internals.fixtureDir, 'projects', 'project1');
+            var hook = Path.join('fixtures', 'hook.js');
+            var hook2 = Path.join('fixtures', 'hook2.js');
+
+            Validate.registerHook(root, hook);
+            Validate.registerHook(root, hook2);
+            done();
+        });
+    });
+
+    it('can run a command that passes', function (done) {
+
+        var path = Path.join(internals.fixtureDir, 'projects', 'project1');
+
+        Validate.runCmd(path, 'hook.js', function (code) {
+
+            expect(code).to.equal(0);
+            done();
+        });
+    });
+
+    it('can run a command that fails', function (done) {
+
+        var path = Path.join(internals.fixtureDir, 'projects', 'project1');
+
+        Validate.runCmd(path, 'hook2.js', function (code) {
+
+            expect(code).to.equal(1);
+            done();
+        });
+    });
+
+    it('runs process.exit if no callback is given', function (done) {
+
+        var path = Path.join(internals.fixtureDir, 'projects', 'project1');
+        var processExit = process.exit;
+        process.exit = function (code) {
+
+            expect(code).to.equal(0);
+            process.exit = processExit;
+            done();
+        };
+
+        Validate.runCmd(path, 'hook.js');
+    });
+
+    after(internals.cleanupFixture);
 });
 
 describe('exit()', function () {

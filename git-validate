@@ -49,20 +49,23 @@ exports.getEnv = function (projectRoot) {
 
 
 // Actually run the given script for the given project
-exports.runCmd = function (projectRoot, name, done) {
+exports.runCmd = function (projectRoot, script, done) {
 
     done = done || process.exit;
     var env = exports.getEnv(projectRoot);
+    var gitRoot = exports.findGitRoot(projectRoot);
+    var hash = Crypto.createHash('md5').update(Path.relative(gitRoot, projectRoot)).digest('hex');
 
-    process.stdout.write('running ' + name + ': ');
+    var hookPath = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d', hash, script);
 
-    var cmd = (process.platform === 'win32' ? 'cmd /c ' : 'sh -c ') + JSON.stringify(command);
-    exec(cmd, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
+    process.stdout.write('running ' + Path.basename(script) + ': ');
+
+    Exec(hookPath, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
         if (err) {
             console.log('failed!');
             console.log(stdout);
             console.log(stderr);
-            exports.exit(err.code, process.exit);
+            exports.exit(err.code, done);
         } else {
             console.log('ok.');
             exports.exit(0, done);
@@ -132,6 +135,7 @@ exports.registerHook = function (root, source) {
 
         var fileContent = Fs.readFileSync(sourcePath);
         Fs.writeFileSync(Path.join(precommitDir, hash, Path.basename(sourcePath)), fileContent);
+        Fs.chmodSync(Path.join(precommitDir, hash, Path.basename(sourcePath)), '755');
     }
     catch (e) {
         return e;
