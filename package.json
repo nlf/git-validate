@@ -4,11 +4,10 @@
   "description": "the extensible core of precommit-hook",
   "main": "git-validate",
   "bin": {
-    "install": "install"
+    "validate": "bin/validate"
   },
   "scripts": {
-    "test": "lab -a code",
-    "install": "install"
+    "test": "lab -a code"
   },
   "repository": {
     "type": "git",

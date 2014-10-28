@@ -7,21 +7,6 @@ var Path = require('path');
 var internals = {};
 
 
-// Given a path, determine if the path is a directory
-//
-// Returns true/false
-internals.isDir = function (path) {
-
-    try {
-        var stat = Fs.statSync(path);
-        return stat.isDirectory();
-    }
-    catch (e) {
-        return false;
-    }
-};
-
-
 // Create a copy of process.env, with the PATH environment variable
 // (case insensitive) modified to include the given project's
 // node_modules/.bin directory.
@@ -127,81 +112,6 @@ exports.addFile = function (source, destination, options) {
 
     var fileContents = Fs.readFileSync(sourcePath);
     Fs.writeFileSync(destinationPath, fileContents);
-};
-
-
-// Given a starting directory, find the root of a git repository.
-// In this case, the root is defined as the first directory that contains
-// a directory named ".git"
-//
-// Returns a string if found, otherwise undefined
-internals.findGitRoot = function (start) {
-
-    var root;
-
-    if (internals.isDir(Path.join(start, '.git'))) {
-        root = start;
-    }
-    else if (Path.dirname(start) !== start) {
-        root = internals.findGitRoot(Path.dirname(start));
-    }
-
-    return root;
-};
-
-
-// Given a starting directory, find the root of the current project.
-// The root of the project is defined as the topmost directory that is
-// *not* contained within a directory named "node_modules" that also
-// contains a file named "package.json"
-//
-// Returns a string
-internals.findProjectRoot = function (start) {
-
-    var position = start.indexOf('node_modules');
-    var root = start.slice(0, position === -1 ? undefined : position - Path.sep.length);
-
-    while (!Fs.existsSync(Path.join(root, 'package.json'))) {
-        root = Path.dirname(root);
-    }
-
-    return root;
-};
-
-
-// Given a root path, find a list of projects.
-// A project is defined as any directory within 4 levels of the starting
-// directory that contains a file named "package.json"
-//
-// Returns an array
-internals.findProjects = function (root, depth) {
-
-    depth = depth || 0;
-    ++depth;
-
-    if (depth > 4 ||
-        !internals.isDir(root) ||
-        root.indexOf('node_modules') !== -1) {
-
-        return [];
-    }
-
-    var dirs = Fs.readdirSync(root);
-    var projects = [];
-
-    for (var i = 0, il = dirs.length; i < il; ++i) {
-        var dir = dirs[i];
-        var path = Path.join(root, dir);
-
-        if (Fs.existsSync(Path.join(path, 'package.json'))) {
-            projects.push(path);
-        }
-        else {
-            projects = projects.concat(internals.findProjects(path, depth));
-        }
-    }
-
-    return projects;
 };
 
 
