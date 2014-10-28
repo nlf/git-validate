@@ -104,7 +104,7 @@ exports.exit = function (code, callback) {
 
 // Given a filename, copies the file to the git root's .git/hooks/pre-commit.d directory,
 // also modifies the current project's package.json file to add the hook.
-exports.registerHook = function (root, source) {
+exports.registerScript = function (root, source) {
 
     var parentRoot = Path.dirname(module.parent.filename);
 
@@ -119,27 +119,55 @@ exports.registerHook = function (root, source) {
 
     var matcher = new RegExp('^' + parentRoot.replace('/', '\/') + '\/.*$');
     if (!matcher.test(sourcePath)) {
-        return new Error('Source file may not be above project root: ' + projectRoot);
+        throw new Error('Source file may not be above project root: ' + projectRoot);
     }
 
-    try {
-        var precommitDir = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d');
-        if (!exports.isDir(precommitDir)) {
-            Fs.mkdirSync(precommitDir);
-        }
+    var hookDir = exports.getHashDir(gitRoot, projectRoot, 'pre-commit');
+    var fileContent = Fs.readFileSync(sourcePath);
+    Fs.writeFileSync(Path.join(hookDir, Path.basename(sourcePath)), fileContent);
+    Fs.chmodSync(Path.join(hookDir, Path.basename(sourcePath)), '755');
+};
 
-        var hash = Crypto.createHash('md5').update(Path.relative(gitRoot, projectRoot)).digest('hex');
-        if (!exports.isDir(Path.join(precommitDir, hash))) {
-            Fs.mkdirSync(Path.join(precommitDir, hash));
-        }
 
-        var fileContent = Fs.readFileSync(sourcePath);
-        Fs.writeFileSync(Path.join(precommitDir, hash, Path.basename(sourcePath)), fileContent);
-        Fs.chmodSync(Path.join(precommitDir, hash, Path.basename(sourcePath)), '755');
+exports.getHashDir = function (root, project, hook) {
+
+    var hookDir = Path.join(root, '.git', 'hooks', hook + '.d');
+    if (!exports.isDir(hookDir)) {
+        Fs.mkdirSync(hookDir);
     }
-    catch (e) {
-        return e;
+
+    var hash = Crypto.createHash('md5').update(Path.relative(root, project)).digest('hex');
+    var hashDir = Path.join(hookDir, hash);
+    if (!exports.isDir(hashDir)) {
+        Fs.mkdirSync(hashDir);
     }
+
+    return hashDir;
+};
+
+
+// Given a filename, copies the file to the git root's .git/hooks/pre-commit.d directory,
+// also modifies the current project's package.json file to add the hook.
+exports.registerCommand = function (root, name, command) {
+
+    if (!command) {
+        command = name;
+        name = root;
+        root = Path.dirname(module.parent.filename);
+    }
+
+    var gitRoot = exports.findGitRoot(root);
+    var projectRoot = exports.findProjectRoot(root);
+    var hookDir = exports.getHashDir(gitRoot, projectRoot, 'pre-commit');
+    var commandsPath = Path.join(hookDir, '.commands.json');
+    var commands = [];
+
+    if (Fs.existsSync(commandsPath)) {
+        commands = require(commandsPath);
+    }
+
+    commands.push({ name: name, command: command });
+    Fs.writeFileSync(commandsPath, JSON.stringify(commands), 'utf8');
 };
 
 
@@ -159,22 +187,17 @@ exports.addFile = function (source, destination, options) {
 
     var matcher = new RegExp('^' + projectRoot.replace('/', '\/') + '\/.*$');
     if (!matcher.test(destinationPath)) {
-        return new Error('Destination must be within project root: ' + projectRoot);
+        throw new Error('Destination must be within project root: ' + projectRoot);
     }
 
     if (!options.overwrite &&
         Fs.existsSync(destinationPath)) {
 
-        return new Error('Destination ' + destinationPath + ' already exists.');
+        throw new Error('Destination ' + destinationPath + ' already exists.');
     }
 
-    try {
-        var fileContents = Fs.readFileSync(sourcePath);
-        Fs.writeFileSync(destinationPath, fileContents);
-    }
-    catch (e) {
-        return e;
-    }
+    var fileContents = Fs.readFileSync(sourcePath);
+    Fs.writeFileSync(destinationPath, fileContents);
 };
 
 

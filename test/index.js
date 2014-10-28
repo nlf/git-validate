@@ -89,8 +89,8 @@ describe('runCmd()', function () {
             var hook = Path.join('fixtures', 'hook.js');
             var hook2 = Path.join('fixtures', 'hook2.js');
 
-            Validate.registerHook(root, hook);
-            Validate.registerHook(root, hook2);
+            Validate.registerScript(root, hook);
+            Validate.registerScript(root, hook2);
             done();
         });
     });
@@ -137,7 +137,7 @@ describe('runCmd()', function () {
 describe('exit()', function () {
 });
 
-describe('registerHook()', function () {
+describe('registerScript()', function () {
 
     before(internals.createFixture);
 
@@ -149,9 +149,10 @@ describe('registerHook()', function () {
         var root = Path.join(internals.fixtureDir, 'projects', 'project1');
         var hook = Path.join('fixtures', 'hook.js');
 
-        var err = Validate.registerHook(root, hook);
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('file already exists');
+        expect(function () {
+
+            Validate.registerScript(root, hook);
+        }).to.throw(Error, /already exists/);
 
         Fs.unlinkSync(path);
         done();
@@ -163,7 +164,7 @@ describe('registerHook()', function () {
         var hook = Path.join('fixtures', 'hook.js');
         var hash = Crypto.createHash('md5').update(Path.join('projects', 'project1')).digest('hex');
 
-        expect(Validate.registerHook(root, hook)).to.be.undefined();
+        Validate.registerScript(root, hook);
         expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d'))).to.be.true();
         expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash))).to.be.true();
         expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, 'hook.js'))).to.be.true();
@@ -176,7 +177,7 @@ describe('registerHook()', function () {
         var hook = Path.join('fixtures', 'hook2.js');
         var hash = Crypto.createHash('md5').update(Path.join('projects', 'project1')).digest('hex');
 
-        expect(Validate.registerHook(root, hook)).to.be.undefined();
+        Validate.registerScript(root, hook);
         expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d'))).to.be.true();
         expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash))).to.be.true();
         expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, 'hook.js'))).to.be.true();
@@ -186,9 +187,64 @@ describe('registerHook()', function () {
 
     it('errors when the given hook is above the parent module root', function (done) {
 
-        var err = Validate.registerHook(Path.join('..', 'hooks', 'test-missing-hook.js'));
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('may not be above project root');
+        expect(function () {
+
+            Validate.registerScript(Path.join('..', 'hooks', 'test-missing-hook.js'));
+        }).to.throw(Error, /may not be above project root/);
+        done();
+    });
+
+    after(internals.cleanupFixture);
+});
+
+describe('registerCommand()', function () {
+
+    before(internals.createFixture);
+
+    it('errors when the pre-commit.d directory cannot be created', function (done) {
+
+        var path = Path.join(Validate.findGitRoot(__dirname), '.git', 'hooks', 'pre-commit.d');
+        Fs.writeFileSync(path, 'error', 'utf8');
+
+        expect(function () {
+
+            Validate.registerCommand('test', 'echo "test"');
+        }).to.throw(Error, /already exists/);
+
+        Fs.unlinkSync(path);
+        done();
+    });
+
+    it('can register a named command', function (done) {
+
+        var root = Path.join(internals.fixtureDir, 'projects', 'project1');
+        var hash = Crypto.createHash('md5').update(Path.join('projects', 'project1')).digest('hex');
+
+        Validate.registerCommand(root, 'test', 'echo "test"');
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, '.commands.json'))).to.be.true();
+        var commands = require(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, '.commands.json'));
+        expect(commands).to.be.an.array();
+        expect(commands).to.have.length(1);
+        expect(commands).to.deep.contain({ name: 'test', command: 'echo "test"' });
+        done();
+    });
+
+    it('can register a second named command', function (done) {
+
+        var root = Path.join(internals.fixtureDir, 'projects', 'project1');
+        var hash = Crypto.createHash('md5').update(Path.join('projects', 'project1')).digest('hex');
+
+        Validate.registerCommand(root, 'test2', 'echo "test2"');
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, '.commands.json'))).to.be.true();
+        var commands = require(Path.join(internals.fixtureDir, '.git', 'hooks', 'pre-commit.d', hash, '.commands.json'));
+        expect(commands).to.be.an.array();
+        expect(commands).to.have.length(2);
+        expect(commands).to.deep.contain({ name: 'test', command: 'echo "test"' });
+        expect(commands).to.deep.contain({ name: 'test2', command: 'echo "test2"' });
         done();
     });
 
@@ -204,7 +260,7 @@ describe('addFile()', function () {
         var source = Path.join('fixtures', 'test.txt');
         var dest = Path.join('test', 'fixtures', 'projects', 'project1', 'test.txt');
 
-        expect(Validate.addFile(source, dest)).to.be.undefined();
+        Validate.addFile(source, dest);
         expect(Fs.existsSync(Path.join(internals.fixtureDir, 'projects', 'project1', 'test.txt'))).to.be.true();
         done();
     });
@@ -214,9 +270,10 @@ describe('addFile()', function () {
         var source = Path.join('fixtures', 'test.txt');
         var dest = Path.join('..', '..', 'test.txt');
 
-        var err = Validate.addFile(source, dest);
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('Destination must be within project root');
+        expect(function () {
+
+            Validate.addFile(source, dest);
+        }).to.throw(Error, /Destination must be within project root/);
         done();
     });
 
@@ -225,9 +282,10 @@ describe('addFile()', function () {
         var source = Path.join('fixtures', 'test.txt');
         var dest = Path.join('test', 'fixtures', 'test.txt');
 
-        var err = Validate.addFile(source, dest);
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('already exists');
+        expect(function () {
+
+            Validate.addFile(source, dest);
+        }).to.throw(Error, /already exists/);
         done();
     });
 
@@ -236,15 +294,16 @@ describe('addFile()', function () {
         var source = Path.join('fixtures', 'test.txt');
         var dest = Path.join('test', 'fixtures', 'test.txt');
 
-        expect(Validate.addFile(source, dest, { overwrite: true })).to.be.undefined();
+        Validate.addFile(source, dest, { overwrite: true });
         done();
     });
 
     it('returns an error when trying to copy a file that does not exist', function (done) {
 
-        var err = Validate.addFile('bacon.txt', 'meats.txt');
-        expect(err).to.not.be.undefined();
-        expect(err.message).to.contain('no such file');
+        expect(function () {
+
+            Validate.addFile('bacon.txt', 'meats.txt');
+        }).to.throw(Error, /no such file/);
         done();
     });
 
