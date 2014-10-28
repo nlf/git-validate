@@ -7,7 +7,7 @@
     "install": "install"
   },
   "scripts": {
-    "test": "make test-cov",
+    "test": "lab -a code",
     "install": "install"
   },
   "repository": {

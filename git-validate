@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 
-var Crypto = require('crypto');
 var Exec = require('child_process').exec;
 var Fs = require('fs');
 var Path = require('path');
+
+var internals = {};
 
 
 // Given a path, determine if the path is a directory
 //
 // Returns true/false
-exports.isDir = function (path) {
+internals.isDir = function (path) {
 
     try {
         var stat = Fs.statSync(path);
@@ -26,7 +27,7 @@ exports.isDir = function (path) {
 // node_modules/.bin directory.
 //
 // Returns an object suitable for child_process.exec
-exports.getEnv = function (projectRoot) {
+internals.getEnv = function (projectRoot) {
 
     // Disabling coverage on this line since we'll never be running tests
     // in a way such that process.platform is both 'win32' and not 'win32'
@@ -49,33 +50,30 @@ exports.getEnv = function (projectRoot) {
 
 
 // Actually run the given script for the given project
-exports.runCmd = function (projectRoot, script, done) {
+internals.runCmd = function (projectRoot, name, command, done) {
 
     done = done || process.exit;
-    var env = exports.getEnv(projectRoot);
-    var gitRoot = exports.findGitRoot(projectRoot);
-    var hash = Crypto.createHash('md5').update(Path.relative(gitRoot, projectRoot)).digest('hex');
+    var env = internals.getEnv(projectRoot);
+    var gitRoot = internals.findGitRoot(projectRoot);
 
-    var hookPath = Path.join(gitRoot, '.git', 'hooks', 'pre-commit.d', hash, script);
+    process.stdout.write('running ' + name + ': ');
 
-    process.stdout.write('running ' + Path.basename(script) + ': ');
-
-    Exec(hookPath, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
+    Exec(command, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
         if (err) {
             console.log('failed!');
             console.log(stdout);
             console.log(stderr);
-            exports.exit(err.code, done);
+            internals.exit(err.code, done);
         } else {
             console.log('ok.');
-            exports.exit(0, done);
+            internals.exit(0, done);
         }
     });
 }
 
 
 // This method shamelessly adapted from https://github.com/cowboy/node-exit
-exports.exit = function (code, callback) {
+internals.exit = function (code, callback) {
     var streams = [process.stdout, process.stderr];
     var drainCount = 0;
 
@@ -102,75 +100,6 @@ exports.exit = function (code, callback) {
 }
 
 
-// Given a filename, copies the file to the git root's .git/hooks/pre-commit.d directory,
-// also modifies the current project's package.json file to add the hook.
-exports.registerScript = function (root, source) {
-
-    var parentRoot = Path.dirname(module.parent.filename);
-
-    if (!source) {
-        source = root;
-        root = parentRoot;
-    }
-
-    var gitRoot = exports.findGitRoot(root);
-    var projectRoot = exports.findProjectRoot(root);
-    var sourcePath = Path.resolve(parentRoot, source);
-
-    var matcher = new RegExp('^' + parentRoot.replace('/', '\/') + '\/.*$');
-    if (!matcher.test(sourcePath)) {
-        throw new Error('Source file may not be above project root: ' + projectRoot);
-    }
-
-    var hookDir = exports.getHashDir(gitRoot, projectRoot, 'pre-commit');
-    var fileContent = Fs.readFileSync(sourcePath);
-    Fs.writeFileSync(Path.join(hookDir, Path.basename(sourcePath)), fileContent);
-    Fs.chmodSync(Path.join(hookDir, Path.basename(sourcePath)), '755');
-};
-
-
-exports.getHashDir = function (root, project, hook) {
-
-    var hookDir = Path.join(root, '.git', 'hooks', hook + '.d');
-    if (!exports.isDir(hookDir)) {
-        Fs.mkdirSync(hookDir);
-    }
-
-    var hash = Crypto.createHash('md5').update(Path.relative(root, project)).digest('hex');
-    var hashDir = Path.join(hookDir, hash);
-    if (!exports.isDir(hashDir)) {
-        Fs.mkdirSync(hashDir);
-    }
-
-    return hashDir;
-};
-
-
-// Given a filename, copies the file to the git root's .git/hooks/pre-commit.d directory,
-// also modifies the current project's package.json file to add the hook.
-exports.registerCommand = function (root, name, command) {
-
-    if (!command) {
-        command = name;
-        name = root;
-        root = Path.dirname(module.parent.filename);
-    }
-
-    var gitRoot = exports.findGitRoot(root);
-    var projectRoot = exports.findProjectRoot(root);
-    var hookDir = exports.getHashDir(gitRoot, projectRoot, 'pre-commit');
-    var commandsPath = Path.join(hookDir, '.commands.json');
-    var commands = [];
-
-    if (Fs.existsSync(commandsPath)) {
-        commands = require(commandsPath);
-    }
-
-    commands.push({ name: name, command: command });
-    Fs.writeFileSync(commandsPath, JSON.stringify(commands), 'utf8');
-};
-
-
 // Given a source file, and a destination path (relative to the project root),
 // copy the source to the destination. If options.overwrite is false or not set,
 // check to see if the file exists first and do not copy if it does. If true,
@@ -181,7 +110,7 @@ exports.addFile = function (source, destination, options) {
 
     options = options || {};
     var root = Path.dirname(module.parent.filename);
-    var projectRoot = exports.findProjectRoot(root);
+    var projectRoot = internals.findProjectRoot(root);
     var sourcePath = Path.resolve(root, source);
     var destinationPath = Path.resolve(projectRoot, destination);
 
@@ -206,15 +135,15 @@ exports.addFile = function (source, destination, options) {
 // a directory named ".git"
 //
 // Returns a string if found, otherwise undefined
-exports.findGitRoot = function (start) {
+internals.findGitRoot = function (start) {
 
     var root;
 
-    if (exports.isDir(Path.join(start, '.git'))) {
+    if (internals.isDir(Path.join(start, '.git'))) {
         root = start;
     }
     else if (Path.dirname(start) !== start) {
-        root = exports.findGitRoot(Path.dirname(start));
+        root = internals.findGitRoot(Path.dirname(start));
     }
 
     return root;
@@ -227,7 +156,7 @@ exports.findGitRoot = function (start) {
 // contains a file named "package.json"
 //
 // Returns a string
-exports.findProjectRoot = function (start) {
+internals.findProjectRoot = function (start) {
 
     var position = start.indexOf('node_modules');
     var root = start.slice(0, position === -1 ? undefined : position - Path.sep.length);
@@ -245,13 +174,13 @@ exports.findProjectRoot = function (start) {
 // directory that contains a file named "package.json"
 //
 // Returns an array
-exports.findProjects = function (root, depth) {
+internals.findProjects = function (root, depth) {
 
     depth = depth || 0;
     ++depth;
 
     if (depth > 4 ||
-        !exports.isDir(root) ||
+        !internals.isDir(root) ||
         root.indexOf('node_modules') !== -1) {
 
         return [];
@@ -268,7 +197,7 @@ exports.findProjects = function (root, depth) {
             projects.push(path);
         }
         else {
-            projects = projects.concat(exports.findProjects(path, depth));
+            projects = projects.concat(internals.findProjects(path, depth));
         }
     }
 

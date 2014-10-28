@@ -1,10 +1,6 @@
 git-validate
 =============
 
-We don't even have a proper name for this thing yet, but until we do, I'm just going
-to stash notes and docs here unless it makes Nathan feel like he wants to fly down
-to San Francisco specifically so he can kick me in the privates.
-
 # Projects vs. Repos
 
 *project*: Something that has a `package.json` file in its top level directory. 
@@ -33,10 +29,6 @@ disallow the commit and hopefully return a useful message to the end user.
 
 In the above example, `git-validate-jshint` will use methods in the `git-validate`
 module to perform basic tasks.
-
-`registerHook(filename)` will take the file specified by `filename` and install it
-(in a subdirectory, perhaps?) in `.git/hooks` where the pre-commit hook installed by `git-validate`
-will find it and run it before a commit.
 
 `addFile(filePath, options)` will add a file (specified by `filePath`) that should be executed by the hook. 
 `options` may contain an `overwrite` property (default: `false`) that, if `true`, will cause the code to overwrite an existing hook file of the same name rather than create a new hook file.
