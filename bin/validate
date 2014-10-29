@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 var Exec = require('child_process').exec;
-var Fs = require('fs');
 var Path = require('path');
+var Utils = require('../lib/utils');
 
 var internals = {};
 
@@ -10,8 +10,6 @@ var internals = {};
 // Create a copy of process.env, with the PATH environment variable
 // (case insensitive) modified to include the given project's
 // node_modules/.bin directory.
-//
-// Returns an object suitable for child_process.exec
 internals.getEnv = function (projectRoot) {
 
     // Disabling coverage on this line since we'll never be running tests
@@ -39,7 +37,7 @@ internals.runCmd = function (projectRoot, name, command, done) {
 
     done = done || process.exit;
     var env = internals.getEnv(projectRoot);
-    var gitRoot = internals.findGitRoot(projectRoot);
+    var gitRoot = Utils.findGitRoot(projectRoot);
 
     process.stdout.write('running ' + name + ': ');
 
@@ -83,37 +81,6 @@ internals.exit = function (code, callback) {
 
     tryToExit();
 }
-
-
-// Given a source file, and a destination path (relative to the project root),
-// copy the source to the destination. If options.overwrite is false or not set,
-// check to see if the file exists first and do not copy if it does. If true,
-// always copy the file without checking
-//
-// Returns null if the file was copied, an Error object with explanation if it was not
-exports.addFile = function (source, destination, options) {
-
-    options = options || {};
-    var root = Path.dirname(module.parent.filename);
-    var projectRoot = internals.findProjectRoot(root);
-    var sourcePath = Path.resolve(root, source);
-    var destinationPath = Path.resolve(projectRoot, destination);
-
-    var matcher = new RegExp('^' + projectRoot.replace('/', '\/') + '\/.*$');
-    if (!matcher.test(destinationPath)) {
-        throw new Error('Destination must be within project root: ' + projectRoot);
-    }
-
-    if (!options.overwrite &&
-        Fs.existsSync(destinationPath)) {
-
-        throw new Error('Destination ' + destinationPath + ' already exists.');
-    }
-
-    var fileContents = Fs.readFileSync(sourcePath);
-    Fs.writeFileSync(destinationPath, fileContents);
-};
-
 
 // We weren't required, so perform our checks
 if (!module.parent) {

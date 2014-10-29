@@ -7,7 +7,7 @@
     "validate": "bin/validate"
   },
   "scripts": {
-    "test": "lab -a code"
+    "test": "lab -L -a code -t 100"
   },
   "repository": {
     "type": "git",
