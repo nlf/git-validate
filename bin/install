@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+
+var Fs = require('fs');
+var Path = require('path');
+var Utils = require('../lib/utils');
+
+var hooks = ['pre-commit'];
+var gitRoot = Utils.findGitRoot();
+
+for (var i = 0, l = hooks.length; i < l; ++i) {
+    var hook = hooks[i];
+    var dest = Path.join(gitRoot, '.git', 'hooks', hook);
+    var source = Path.relative(Path.dirname(dest), Path.resolve(__dirname, '..', 'bin', 'validate'));
+
+    if (Fs.existsSync(dest)) {
+        Fs.renameSync(dest, dest + '.backup');
+    }
+
+    Fs.symlinkSync(source, dest, 'file');
+}
