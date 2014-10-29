@@ -56,6 +56,7 @@ internals.runCmd = function (projectRoot, name, command, done) {
 
 
 // This method shamelessly adapted from https://github.com/cowboy/node-exit
+/* $lab:coverage:off$ */
 internals.exit = function (code, callback) {
     var streams = [process.stdout, process.stderr];
     var drainCount = 0;
@@ -81,8 +82,6 @@ internals.exit = function (code, callback) {
 
     tryToExit();
 }
+/* $lab:coverage:on$ */
 
-// We weren't required, so perform our checks
-if (!module.parent) {
-    console.log('Running %s checks...', Path.basename(process.argv[1]));
-}
+console.log('Running %s checks...', Path.basename(process.argv[1]));
