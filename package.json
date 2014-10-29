@@ -2,7 +2,7 @@
   "name": "git-validate",
   "version": "0.0.0",
   "description": "the extensible core of precommit-hook",
-  "main": "git-validate",
+  "main": "lib/utils.js",
   "bin": {
     "validate": "bin/validate"
   },

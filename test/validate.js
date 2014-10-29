@@ -14,11 +14,6 @@ describe('validate', function () {
     it('runs', function (done) {
 
         var validate = Spawn(Path.resolve(__dirname, '..', 'bin', 'validate'), [], { stdio: 'pipe' });
-        validate.stdout.on('data', function (chunk) {
-
-            chunk = chunk.toString();
-            expect(chunk).to.equal('Running validate checks...\n');
-        });
 
         validate.on('close', function (code) {
 

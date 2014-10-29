@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 
 var Exec = require('child_process').exec;
+var Fs = require('fs');
 var Path = require('path');
 var Utils = require('../lib/utils');
 
-var internals = {};
+var internals = {
+    pathSep: process.platform === 'win32' ? ';' : ':'
+};
 
 
 // Create a copy of process.env, with the PATH environment variable
@@ -12,14 +15,11 @@ var internals = {};
 // node_modules/.bin directory.
 internals.getEnv = function (projectRoot) {
 
-    // Disabling coverage on this line since we'll never be running tests
-    // in a way such that process.platform is both 'win32' and not 'win32'
-    var pathSep = process.platform === 'win32' ? ';' : ':';
     var env = {};
 
     for (var key in process.env) {
         if (key.toLowerCase() === 'path') {
-            env[key] = Path.join(projectRoot, 'node_modules', '.bin') + pathSep + process.env[key];
+            env[key] = Path.join(projectRoot, 'node_modules', '.bin') + internals.pathSep + process.env[key];
         }
         else {
             env[key] = process.env[key];
@@ -31,20 +31,18 @@ internals.getEnv = function (projectRoot) {
 
 
 // Actually run the given script for the given project
-internals.runCmd = function (projectRoot, name, command, done) {
+internals.runCmd = function (projectRoot, env, name, script, done) {
 
     done = done || process.exit;
-    var env = internals.getEnv(projectRoot);
-    var gitRoot = Utils.findGitRoot(projectRoot);
-
     process.stdout.write('running ' + name + ': ');
 
-    Exec(command, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
+    var cmd = (process.platform === 'win32' ? 'cmd /c ' : 'sh -c ') + JSON.stringify(script);
+    Exec(cmd, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
         if (err) {
             console.log('failed!');
             console.log(stdout);
             console.log(stderr);
-            internals.exit(err.code, done);
+            internals.exit(err.code, process.exit);
         } else {
             console.log('ok.');
             internals.exit(0, done);
@@ -80,4 +78,32 @@ internals.exit = function (code, callback) {
     tryToExit();
 }
 
-console.log('Running %s checks...', Path.basename(process.argv[1]));
+
+var hook = Path.basename(process.argv[1]);
+var projects = Utils.findProjects();
+
+for (var i = 0, il = projects.length; i < il; ++i) {
+    var project = projects[i];
+
+    var env = internals.getEnv(project);
+    var config = Fs.existsSync(Path.join(project, '.validate.json')) ? require(Path.join(project, '.validate.json')) : {};
+    var pkg = require(Path.join(project, 'package.json'));
+    var scripts = pkg[hook] || config[hook] || [];
+
+    var tasks = [];
+
+    for (var m = 0, ml = scripts.length; m < ml; ++m) {
+        var script = scripts[m];
+        var command = (pkg.scripts || {})[script] || (config.scripts || {})[script];
+        var task = internals.runCmd.bind(null, project, env, script, command);
+        tasks[m] = function () {
+
+            task.call(null, tasks[i + 1]);
+        };
+    }
+
+    if (tasks.length) {
+        console.log('Running %s checks for %s...', hook, Path.basename(project));
+        tasks[0]();
+    }
+}
