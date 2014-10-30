@@ -112,6 +112,14 @@ describe('copy()', function () {
         done();
     });
 
+    it('can copy a file without specifying a target', function (done) {
+
+        Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'));
+        var err = Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), { overwrite: true });
+        expect(err).to.be.undefined();
+        done();
+    });
+
     it('throws when trying to write outside of the project root', function (done) {
 
         expect(function () {
