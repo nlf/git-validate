@@ -1,34 +1,87 @@
-git-validate
-=============
+#git-validate
 
-# Projects vs. Repos
+This is a super simple framework to facilitate creating your own modules similar to [precommit-hook](https://github.com/nlf/precommit-hook).
 
-*project*: Something that has a `package.json` file in its top level directory. 
+## Usage
 
-*repository* or *repo*: Something that has a `.git` directory in its top level directory. 
+This module isn't intended to be used directly in your projects (thought it can be), but rather as the dependency of a module that you create that will act as a template of sorts.
 
-Repos can contain projects as well as other repos.
+To create a validate module, first make a new directory and use `npm init` to initialize your module:
 
-Projects can contain repos as well as other projects.
+```bash
+mkdir validate-nlf
+cd validate-nlf
+npm init
+```
 
-And a repo and project can be the same thing.
+Follow the prompts, and when complete install this module:
 
-# How this thing might be used
+```bash
+npm install --save git-validate
+```
 
-`npm install --save-dev git-validate` 
-Install git-validate and save it as a dev dependency in the project. The install script will also create `.git/hooks/pre-commit` file for you (and clobber an existing `pre-commit` hook). As yet, this pre-commit hook won't actually do anything. This step isn't really necessary though
-because this will all happen as a dependency when you do the next step.
+Now, let's say we want to provide a default `.jshintrc` file, let's go ahead and create that file in our new directory and fill it with some options:
 
-`npm install --save-dev git-validate-jshint`
-This will install git-validate-jshint as a dev dependency. The install script might
-do all sorts of fun stuff, like generate a .jshintrc file if one does not already
-exist. Most importantly, though, it will install another file that the pre-commit
-hook will run prior to a commit. Judging from the name, this hook will run `jshint`
-on your code. If linting with `jshint` returns any errors, the pre-commit hook will
-disallow the commit and hopefully return a useful message to the end user.
+```bash
+vim jshintrc
+```
 
-In the above example, `git-validate-jshint` will use methods in the `git-validate`
-module to perform basic tasks.
+```javascript
+{
+  "node": true,
 
-`addFile(filePath, options)` will add a file (specified by `filePath`) that should be executed by the hook. 
-`options` may contain an `overwrite` property (default: `false`) that, if `true`, will cause the code to overwrite an existing hook file of the same name rather than create a new hook file.
+  "curly": true,
+  "latedef": true,
+  "quotmark": true,
+  "undef": true,
+  "unused": true,
+  "trailing": true
+}
+```
+
+Note that we saved the file as `jshintrc` without the leading dot.
+
+Next, let's create our install script:
+
+```bash
+vim install.js
+```
+
+```javascript
+var Validate = require('git-validate');
+
+Validate.copy('jshintrc', '.jshintrc');
+```
+
+This instructs **git-validate** to copy the `jshintrc` file in our module to `.jshintrc` in the root of the project that installs it.
+
+Now we edit our `package.json` to tell it about our install script:
+
+```javascript
+  "scripts": {
+    "install": "node install.js"
+  }
+```
+
+And that's it for the simplest possible example. Now anytime you install `validate-nlf` you'll automatically get a `.jshintrc` file in your project.
+
+This wouldn't be any fun without the git hooks though, so let's extend it a bit further to make sure that `jshint` is run any time a user tries to `git commit` after installing our module. To do so, let's create a `validate.json` file with the following contents:
+
+```javascript
+{
+  "scripts": {
+    "lint": "jshint ."
+  },
+  "pre-commit": ["lint"]
+}
+```
+
+And then let's add a line to our install.js to make sure it gets installed as `.validate.json` (note the leading dot).
+
+```javascript
+Validate.copy('validate.json', '.validate.json', { overwrite: true });
+```
+
+Great, that's it! You'll notice the `{ overwrite: true }` object as the last parameter to `copy`. This tells **git-validate** that it's ok to overwrite an existing file. Without that option, the copy method would fail silently if the file already exists. That's why we didn't use it for our `.jshintrc` because that's something a user should be able to configure.
+
+Now when a user tries to run `git commit` **git-validate** will open `.validate.json` and see that the `pre-commit` event wants to run the `lint` script. It will load your project's `package.json` to see if you have a `lint` script defined there first. If you do not, it will use the `lint` script present in the `.validate.json` file and run it. If the script fails, the commit is denied. Easy!
