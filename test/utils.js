@@ -98,17 +98,17 @@ describe('copy()', function () {
     it('throws when trying to overwrite a file by default', function (done) {
 
         Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), Path.join(__dirname, 'fixtures2', 'project1', 'package.json'));
-        expect(function () {
-
-            Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), Path.join(__dirname, 'fixtures2', 'project1', 'package.json'));
-        }).to.throw(Error, /already exists/);
+        var err = Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), Path.join(__dirname, 'fixtures2', 'project1', 'package.json'));
+        expect(err).to.not.be.undefined();
+        expect(err.message).to.contain('already exists');
         done();
     });
 
     it('allows overwriting a file when setting overwrite to true', function (done) {
 
         Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), Path.join(__dirname, 'fixtures2', 'project1', 'package.json'));
-        Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), Path.join(__dirname, 'fixtures2', 'project1', 'package.json'), { overwrite: true });
+        var err = Utils.copy(Path.join(internals.fixturePath, 'project1', 'package.json'), Path.join(__dirname, 'fixtures2', 'project1', 'package.json'), { overwrite: true });
+        expect(err).to.be.undefined();
         done();
     });
 
