@@ -95,11 +95,13 @@ for (var i = 0, il = projects.length; i < il; ++i) {
     for (var m = 0, ml = scripts.length; m < ml; ++m) {
         var script = scripts[m];
         var command = (pkg.scripts || {})[script] || (config.scripts || {})[script];
-        var task = internals.runCmd.bind(null, project, env, script, command);
-        tasks[m] = function () {
+        if (command) {
+            var task = internals.runCmd.bind(null, project, env, script, command);
+            tasks[m] = function () {
 
-            task.call(null, tasks[i + 1]);
-        };
+                task.call(null, tasks[i + 1]);
+            };
+        }
     }
 
     if (tasks.length) {
