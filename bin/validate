@@ -42,7 +42,7 @@ internals.getEnv = function (projectRoot) {
             env[key] += Path.resolve(__dirname, '..', '..', '.bin') + internals.pathSep;
             env[key] += process.env[key];
             if (process.env.TERM === 'cygwin') {
-                env[key] = env[key].replace(/(:)?\\/g, '/').replace(/;/g, ':');
+                env[key] = env[key].replace(/(:)?\\/g, '/').split(internals.pathSep).map(function (segment) { return '/' + segment; }).join(':');
             }
         }
         else {
