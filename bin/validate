@@ -65,35 +65,34 @@ internals.runCmd = function (projectRoot, env, name, script, done) {
         return internals.exit(0, done);
     }
 
-    var logPath = Path.join(Os.tmpdir(), Crypto.psuedoRandomBytes(16).toString('hex'));
+    var logPath = Path.join(Os.tmpdir(), Crypto.pseudoRandomBytes(16).toString('hex'));
     var logFile = Fs.createWriteStream(logPath);
 
     process.stdout.write('running ' + name + ': ' + pad);
-    var cmd = '';
-    var args = [];
-    if (process.platform === 'win32') {
-        cmd = 'cmd';
-        args.push('/c');
-    }
-    else {
-        cmd = 'sh';
-        args.push('-c');
-    }
+    var cmd = '/usr/bin/env';
+    var args = script.split(' ');
 
-    args.push(JSON.stringify(script));
-    var process = Spawn(cmd, args, { stdio: [null, logFile, logFile] });
-    process.on('close', function (code) {
+    logFile.on('open', function () {
 
-        if (code === 0) {
-            console.log(internals.passed);
-            Fs.unlinkSync(logPath);
-            return internals.exit(0, done);
-        }
+        var hookProcess = Spawn(cmd, args, { stdio: [null, logFile, logFile], env: env });
+        hookProcess.on('close', function (code) {
 
-        console.log(internals.failed);
-        Fs.createReadStream(logPath).pipe(process.stdout);
-        Fs.unlinkSync(logPath);
-        internals.exit(err.code, process.exit);
+            if (code === 0) {
+                console.log(internals.passed);
+                Fs.unlinkSync(logPath);
+                return internals.exit(0, done);
+            }
+
+            console.log(internals.failed);
+            logFile = Fs.createReadStream(logPath);
+            logFile.on('end', function () {
+
+                Fs.unlinkSync(logPath);
+                internals.exit(code, process.exit);
+            });
+
+            logFile.pipe(process.stdout);
+        });
     });
 }
 
