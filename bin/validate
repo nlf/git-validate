@@ -41,6 +41,9 @@ internals.getEnv = function (projectRoot) {
             env[key] = Path.join(projectRoot, 'node_modules', '.bin') + internals.pathSep;
             env[key] += Path.resolve(__dirname, '..', '..', '.bin') + internals.pathSep;
             env[key] += process.env[key];
+            if (process.env.TERM === 'cygwin') {
+                env[key] = env[key].replace(/(:)?\\/g, '/').replace(/;/g, ':');
+            }
         }
         else {
             env[key] = process.env[key];
