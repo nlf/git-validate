@@ -72,8 +72,8 @@ internals.runCmd = function (projectRoot, env, name, script, done) {
     var logFile = Fs.createWriteStream(logPath);
 
     process.stdout.write('running ' + name + ': ' + pad);
-    var cmd = '/usr/bin/env';
-    var args = script.split(' ');
+    var cmd = 'sh';
+    var args = ['-c'].concat(script.split(' '));
 
     logFile.on('open', function () {
 
