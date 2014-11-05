@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-var Exec = require('child_process').exec;
+var Crypto = require('crypto');
 var Fs = require('fs');
+var Os = require('os');
 var Path = require('path');
+var Spawn = require('child_process').spawn;
 var Utils = require('../lib/utils');
 
 var internals = {
@@ -63,18 +65,33 @@ internals.runCmd = function (projectRoot, env, name, script, done) {
         return internals.exit(0, done);
     }
 
+    var logPath = Path.join(Os.tmpdir(), Crypto.psuedoRandomBytes(16).toString('hex'));
+    var logFile = Fs.createWriteStream(logPath);
+
     process.stdout.write('running ' + name + ': ' + pad);
-    var cmd = (process.platform === 'win32' ? 'cmd /c ' : 'sh -c ') + JSON.stringify(script);
-    Exec(cmd, { cwd: projectRoot, env: env }, function (err, stdout, stderr) {
-        if (err) {
-            console.log(internals.failed);
-            console.log(stdout);
-            console.log(stderr);
-            internals.exit(err.code, process.exit);
-        } else {
+    var cmd = '';
+    var args = [];
+    if (process.platform === 'win32') {
+        cmd = 'cmd';
+        args.push('/c');
+    }
+    else {
+        cmd = 'sh';
+        args.push('-c');
+    }
+
+    args.push(JSON.stringify(script));
+    var process = Spawn(cmd, args, { stdio: [null, logFile, logFile] });
+    process.on('close', function (code) {
+
+        if (code === 0) {
             console.log(internals.passed);
-            internals.exit(0, done);
+            return internals.exit(0, done);
         }
+
+        console.log(internals.failed);
+        Fs.createReadStream(logPath).pipe(process.stdout);
+        internals.exit(err.code, process.exit);
     });
 }
 
