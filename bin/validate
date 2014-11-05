@@ -86,11 +86,13 @@ internals.runCmd = function (projectRoot, env, name, script, done) {
 
         if (code === 0) {
             console.log(internals.passed);
+            Fs.unlinkSync(logPath);
             return internals.exit(0, done);
         }
 
         console.log(internals.failed);
         Fs.createReadStream(logPath).pipe(process.stdout);
+        Fs.unlinkSync(logPath);
         internals.exit(err.code, process.exit);
     });
 }
