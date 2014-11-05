@@ -36,7 +36,9 @@ internals.getEnv = function (projectRoot) {
 
     for (var key in process.env) {
         if (key.toLowerCase() === 'path') {
-            env[key] = Path.join(projectRoot, 'node_modules', '.bin') + internals.pathSep + process.env[key];
+            env[key] = Path.join(projectRoot, 'node_modules', '.bin') + internals.pathSep;
+            env[key] += Path.resolve(__dirname, '..', '..', '.bin') + internals.pathSep;
+            env[key] += process.env[key];
         }
         else {
             env[key] = process.env[key];
