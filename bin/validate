@@ -73,7 +73,7 @@ internals.runCmd = function (projectRoot, env, name, script, done) {
 
     process.stdout.write('running ' + name + ': ' + pad);
     var cmd = 'sh';
-    var args = ['-c'].concat(script.split(' '));
+    var args = ['-c', script];
 
     logFile.on('open', function () {
 
