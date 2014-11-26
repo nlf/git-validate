@@ -125,6 +125,13 @@ internals.exit = function (code, callback) {
     });
 
     tryToExit();
+    
+    // In Windows, when run as a Node.js child process, a script utilizing
+    // this library might just exit with a 0 exit code, regardless. This code,
+    // despite the fact that it looks a bit crazy, appears to fix that
+    process.on('exit', function() {
+        process.exit(exitCode);
+    });
 }
 
 
