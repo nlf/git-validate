@@ -7,7 +7,8 @@
     "validate": "bin/validate"
   },
   "scripts": {
-    "test": "lab -L -a code -t 100"
+    "test": "lab -L -a code -t 100",
+    "bacon": "do stuff"
   },
   "repository": {
     "type": "git",
@@ -29,6 +30,7 @@
     "code": "1.x.x",
     "lab": "5.x.x",
     "mkdirp": "^0.5.0",
+    "mock-fs": "^2.5.0",
     "rimraf": "2.x.x"
   }
 }
