@@ -47,7 +47,7 @@ tokenize() {
     local KEYWORD='null|false|true'
     local SPACE='[[:space:]]+'
     
-    $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
+    sed 's/$//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
 }
 
 parse_array() {
@@ -245,7 +245,8 @@ run_script() {
         return 0
     fi
 
-    local output=$(PATH=$PATH:./node_modules/.bin $script 2>&1)
+    local output=""
+    output=$(PATH=$PATH:./node_modules/.bin $script 2>&1)
     local result=$?
     if [[ $result -ne 0 ]]; then
         echo "failed!"
