@@ -1,141 +1,345 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Copied from github.com/step-/JSON.awk
-_json_parser='BEGIN{BRIEF=1;STREAM=1;delete FAILS;while(getline ARGV[++ARGC]<"/dev/stdin"){if(ARGV[ARGC]=="")break}srand();RS="n/o/m/a/t/c/h";rand()}{reset();tokenize($0);if(0==parse()){apply(JPATHS, NJPATHS)}}END{for(name in FAILS){print "invalid: " name;print FAILS[name]}}function apply(ary,size,i){for(i=1;i<size;i++)print ary[i]}function get_token(){TOKEN=TOKENS[++ITOKENS];return ITOKENS<NTOKENS}function parse_array(a1,idx,ary,ret){idx=0;ary="";get_token();if(TOKEN!="]"){while(1){if(ret=parse_value(a1,idx)){return ret}idx=idx+1;ary=ary VALUE;get_token();if(TOKEN=="]"){break}else if(TOKEN==","){ary=ary ","}else{report(",or ]",TOKEN?TOKEN:"EOF");return 2}get_token()}}if(1!=BRIEF){VALUE=sprintf("[%s]",ary)}else{VALUE=""}return 0}function parse_object(a1,key,obj){obj="";get_token();if(TOKEN!="}"){while(1){if(TOKEN~/^".*"$/){key=TOKEN}else{report("string",TOKEN?TOKEN:"EOF");return 3}get_token();if(TOKEN!=":"){report(":",TOKEN?TOKEN:"EOF");return 4}get_token();if(parse_value(a1,key)){return 5}obj=obj key ":" VALUE;get_token();if(TOKEN=="}"){break}else if(TOKEN==","){obj=obj ","}else{report(",or }",TOKEN?TOKEN:"EOF");return 6}get_token()}}if(1!=BRIEF){VALUE=sprintf("{%s}",obj)}else{VALUE=""}return 0}function parse_value(a1,a2,jpath,ret,x){jpath=(a1!=""?a1 ",":"") a2;if(TOKEN=="{"){if(parse_object(jpath)){return 7}}else if(TOKEN=="["){if(ret=parse_array(jpath)){return ret}}else if(TOKEN~/^(|[^0-9])$/){report("value",TOKEN!=""?TOKEN:"EOF");return 9}else{VALUE=TOKEN}if(!(1==BRIEF&&(""==jpath||""==VALUE))){x=sprintf("[%s]\t%s",jpath,VALUE);if(0==STREAM){JPATHS[++NJPATHS]=x}else{print x}}return 0}function parse(ret){get_token();if(ret=parse_value()){return ret}if(get_token()){report("EOF",TOKEN);return 11}return 0}function report(expected,got,i,from,to,context){from=ITOKENS-10;if(from<1)from=1;to=ITOKENS+10;if(to>NTOKENS)to=NTOKENS;for(i=from;i<ITOKENS;i++)context=context sprintf("%s ",TOKENS[i]);context=context "<<" got ">> ";for(i=ITOKENS+1;i<=to;i++)context=context sprintf("%s ",TOKENS[i])}function reset(){TOKEN="";delete TOKENS;NTOKENS=ITOKENS=0;delete JPATHS;NJPATHS=0;VALUE=""}function tokenize(a1,pq,pb,ESCAPE,CHAR,STRING,NUMBER,KEYWORD,SPACE){SPACE="[[:space:]]+";gsub(/\"[^[:cntrl:]\"\\]*((\\[^u[:cntrl:]]|\\u[0-9a-fA-F]{4})[^[:cntrl:]\"\\]*)*\"|-?(0|[1-9][0-9]*)([.][0-9]*)?([eE][+-]?[0-9]*)?|null|false|true|[[:space:]]+|./,"\n&",a1);gsub("\n" SPACE,"\n",a1);sub(/^\n/,"",a1);ITOKENS=0;return NTOKENS=split(a1,TOKENS,/\n/)}'
+# This section copied from github.com/dominictarr/JSON.sh and simplified a bit
+##############################################################################
+throw() {
 
-# Guard to avoid running hooks when rebasing, just exit with success immediately
-_branch_name=$(git branch | grep '*' | sed 's/* //')
-if [[ "$_branch_name" == "(no branch)" ]]; then
-    exit 0
-fi
+    echo "$*" >&2
+    exit 1
+}
 
-_find_script ()
-{
-    _json=$1
-    _name=$2
-    _script=""
+awk_egrep() {
 
-    _ifs="${IFS}"
+    local pattern_string=$1
+    gawk '{
+        while ($0) {
+            start=match($0,pattern);
+            token=substr($0,start,RLENGTH);
+            print token;
+            $0=substr($0,start+RLENGTH);
+        }
+    }' pattern=$pattern_string
+}
+
+tokenize() {
+    
+    local GREP
+    local ESCAPE
+    local CHAR
+    
+    if echo "test string" | grep -ao --color=never "test" &>/dev/null; then
+        GREP="egrep -ao --color=never"
+    else
+        GREP="egrep -ao"
+    fi
+
+    if echo "test string" | egrep -o "test" &>/dev/null; then
+        ESCAPE='(\\[^u[:cntrl:]]|\\u[0-9a-fA-F]{4})'
+        CHAR='[^[:cntrl:]"\\]'
+    else
+        GREP=awk_egrep
+        ESCAPE='(\\\\[^u[:cntrl:]]|\\u[0-9a-fA-F]{4})'
+        CHAR='[^[:cntrl:]"\\\\]'
+    fi
+
+    local STRING="\"$CHAR*($ESCAPE$CHAR*)*\""
+    local NUMBER='-?(0|[1-9][0-9]*)([.][0-9]*)?([eE][+-]?[0-9]*)?'
+    local KEYWORD='null|false|true'
+    local SPACE='[[:space:]]+'
+    
+    $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
+}
+
+parse_array() {
+
+    local index=0
+    local ary=''
+    
+    read -r token
+    case "$token" in
+        ']')
+            ;;
+        *)
+            while :
+            do
+                parse_value "$1" "$index"
+                index=$((index+1))
+                ary="$ary""$value"
+                read -r token
+
+                case "$token" in
+                    ']')
+                        break
+                        ;;
+                    ',')
+                        ary="$ary,"
+                        ;;
+                    *)
+                        throw "EXPECTED , or ] GOT ${token:-EOF}"
+                        ;;
+                esac
+                read -r token
+            done
+            ;;
+    esac
+    value=
+    :
+}
+
+parse_object() {
+
+    local key
+    local obj=''
+    read -r token
+    
+    case "$token" in
+        '}')
+            ;;
+        *)
+            while :
+            do
+                case "$token" in
+                    '"'*'"')
+                        key=$token
+                        ;;
+                    *)
+                        throw "EXPECTED string GOT ${token:-EOF}"
+                        ;;
+                esac
+
+                read -r token
+                case "$token" in
+                    ':')
+                        ;;
+                    *)
+                        throw "EXPECTED : GOT ${token:-EOF}"
+                        ;;
+                esac
+
+                read -r token
+                parse_value "$1" "$key"
+                obj="$obj$key:$value"
+
+                read -r token
+                case "$token" in
+                    '}')
+                        break
+                        ;;
+                    ',')
+                        obj="$obj,"
+                        ;;
+                    *)
+                        throw "EXPECTED , or } GOT ${token:-EOF}"
+                        ;;
+                esac
+
+                read -r token
+            done
+            ;;
+    esac
+    value=
+    
+    :
+}
+
+parse_value() {
+
+    local jpath="${1:+$1,}$2"
+    local isleaf=0
+    local isempty=0
+    
+    case "$token" in
+        '{')
+            parse_object "$jpath"
+            ;;
+        '[')
+            parse_array "$jpath"
+            ;;
+        ''|[!0-9])
+            throw "EXPECTED value GOT ${token:-EOF}"
+            ;;
+        *)
+            value=$token
+            isleaf=1
+            [ "$value" = '""' ] && isempty=1
+            ;;
+    esac
+
+    [ "$value" = '' ] && return
+    [ "$isleaf" -eq 1 ] && [ $isempty -eq 0 ] && printf "[%s]\t%s\n" "$jpath" "$value"
+
+    :
+}
+
+parse() {
+
+    read -r token
+    parse_value
+
+    read -r token
+    case "$token" in
+        '')
+            ;;
+        *)
+            throw "EXPECTED EOF GOT $token"
+            ;;
+    esac
+}
+
+parse_json() {
+
+    tokenize | parse
+}
+##############################################################################
+# End of copied code
+
+# Search parsed JSON for a named script, return the script as a string
+find_script() {
+
+    local json=$1
+    local name=$2
+    local script=""
+    local oifs="${IFS}"
+
     IFS=$'\n'
-    for line in $_json; do
-        IFS="${_ifs}"
+
+    for line in $json; do
+        IFS="${oifs}"
+
         echo "$line" | grep '\["scripts"' 2>&1 >/dev/null
-        if [[ $? == 0 ]]; then
-            match=$(echo $line | sed -n 's/\["scripts","\([^"]*\)"\] "\([^"]*\)"/\1 \2/p')
-            IFS=' ' read -r name string <<< $match
-            if [[ "$name" == "$_name" ]]; then
-                _script=${match:${#name}+1}
+        if [[ $? -eq 0 ]]; then
+            local script_name=""
+            local match=$(echo $line | sed -n 's/\["scripts","\([^"]*\)"\] "\([^"]*\)"/\1 \2/p')
+
+            IFS=' ' read -r script_name string <<< $match
+            if [[ "$script_name" == "$name" ]]; then
+                script=${match:${#script_name}+1}
                 break
             fi
         fi
+
         IFS=$'\n'
     done
-    IFS="${_ifs}"
-    echo "$_script"
+
+    IFS="${oifs}"
+
+    echo "$script"
 }
 
-# Accepts parsed package.json and a script name as arguments, then finds the given
-# script name and runs it
-_run_script ()
-{
-    _defaults=$1
-    _json=$2
-    _name=$3
+# Run the named script, searches both package.json and .validate.json
+run_script() {
 
-    echo -n "running $_name..."
-    _script=$(_find_script "$_json" "$_name")
-    if [[ "$_script" == "" ]]; then
-        if [[ "$_defaults" != "" ]]; then
-            _script=$(_find_script "$_defaults" "$_name")
-        fi
-    fi
-    if [[ "$_script" == "" ]]; then
-        echo "not found!" # this will return 0, which is fine
-    else
-        # out=$(mktemp -t "$_name")
-        out=$(PATH=$PATH:./node_modules/.bin $_script 2>&1)
-        res=$?
-        if [[ $res != 0 ]]; then
-            echo "failed!"
-            echo "$out"
-        else
-            echo "passed!"
-        fi
-        return $res
-    fi
-}
+    local defaults=$1
+    local json=$2
+    local name=$3
 
-_find_commands ()
-{
-    _json=$1
-    _commands=""
+    echo -n "running $name..."
 
-    _ifs="${IFS}"
-    IFS=$'\n'
-    for line in $_json; do
-        IFS="${_ifs}"
-        echo "$line" | grep "\[\"$_cmd\"" 2>&1 >/dev/null
-        if [[ $? == 0 ]]; then
-            match=$(echo $line | sed -n "s/\[\"$_cmd\",[0-9]*\] \"\([^\"]*\)\"/\1/p")
-            _commands="$_commands $match"
-        fi
-        IFS=$'\n'
-    done
-    IFS="${_ifs}"
-
-    echo "$_commands"
-}
-
-# Accepts the full path to a project, parses the package.json and runs the relevant
-# commands for the given project
-_check_project ()
-{
-    _package=$1
-    _dir=$(dirname $_package)
-    _json=$(echo "$_package" | awk "$_json_parser")
-    _defaults=""
-    if [[ -f "$_dir/.validate.json" ]]; then
-        _defaults=$(echo "$_dir/.validate.json" | awk "$_json_parser")
+    local script=$(find_script "$json" "$name")
+    if [[ "$script" == "" ]] && [[ "$defaults" != "" ]]; then
+        script=$(find_script "$_defaults" "$_name")
     fi
 
-    _commands=$(_find_commands "$_json")
-    if [[ "$_commands" == "" ]]; then
-        _commands=$(_find_commands "$_defaults")
-    fi
-
-    if [[ "$_commands" == "" ]]; then
-        echo "no checks for $_cmd found.. skipping"
+    if [[ "$script" == "" ]]; then
+        echo "not found!"
         return 0
     fi
 
-    pushd "$_dir" >/dev/null
-    for cmd in $_commands; do
-        _run_script "$_defaults" "$_json" "$cmd"
-        res=$?
-        [[ $res != 0 ]] && break
-    done
-    popd >/dev/null
-
-    return $res
+    local output=$(PATH=$PATH:./node_modules/.bin $script 2>&1)
+    local result=$?
+    if [[ $result -ne 0 ]]; then
+        echo "failed!"
+        echo "$output"
+    else
+        echo "passed!"
+    fi
+    return $result
 }
 
-# Save the command name since it's the key we'll use to look up scripts
-_cmd=$(basename $0)
+find_commands() {
 
-# Find the root of the git repo the current directory is part of
-_git_root=$(git rev-parse --show-toplevel)
+    local json=$1
+    local commands=""
 
-# Change to the git repo's root and find all instances of package.json that
-# are *not* inside a node_modules directory
-pushd $_git_root >/dev/null
-_projects=$(find . -name package.json -print | grep -v node_modules | sed s/\.//)
-popd >/dev/null
+    local oifs="${IFS}"
+    IFS=$'\n'
 
-# Iterate over each project
-for project in $_projects; do
-    _check_project $_git_root$project
-    res=$?
-    [[ $res != 0 ]] && exit $res
-done
+    for line in $json; do
+        IFS="${oifs}"
 
-exit 0
+        echo "$line" | grep "\[\"$hook_cmd\"" 2>&1 >/dev/null
+        if [[ $? -eq 0 ]]; then
+            local match=$(echo $line | sed -n "s/\[\"$hook_cmd\",[0-9]*\] \"\([^\"]*\)\"/\1/p")
+            commands="$commands $match"
+        fi
+
+        IFS=$'\n'
+    done
+
+    IFS="${oifs}"
+
+    echo "$commands"
+}
+
+# Finds the appropriate commands to run for a project and runs them
+check_project() {
+
+    local package=$1
+    local dir=$(dirname "$package")
+    local json=$(cat "$package" | parse_json)
+    local defaults=""
+
+    if [[ -f "$dir/.validate.json" ]]; then
+        defaults=$(cat "$dir/.validate.json" | parse_json)
+    fi
+
+    local commands=$(find_commands "$json")
+    if [[ "$commands" == "" ]] && [[ "$defaults" != "" ]]; then
+        commands=$(find_commands "$defaults")
+    fi
+
+    if [[ "$commands" == "" ]]; then
+        echo "no checks for $hook_cmd found.. skipping"
+        return 0
+    fi
+
+    pushd "$dir" >/dev/null
+
+    for cmd in $commands; do
+        run_script "$defaults" "$json" "$cmd"
+        local result=$?
+        [[ $result != 0 ]] && break
+    done
+
+    popd >/dev/null
+
+    return $result
+}
+
+# Find all projects in the current repo and check each one
+run_hook() {
+
+    # Guard to avoid running hooks when rebasing, just exit with success immediately
+    if [[ $(git branch | grep '*' | sed 's/* //') == "(no branch)" ]]; then
+        exit 0
+    fi
+
+    local hook_cmd=$(basename $0)
+    local git_root=$(git rev-parse --show-toplevel)
+
+    pushd $git_root >/dev/null
+    local projects=$(find . -name package.json -print | grep -v node_modules | sed s/\.//)
+    popd >/dev/null
+
+    local result=0
+
+    for project in $projects; do
+        check_project "$git_root$project"
+        result=$?
+        [[ $result -eq 0 ]] && break
+    done
+
+    return $result
+}
+
+run_hook
