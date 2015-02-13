@@ -327,7 +327,7 @@ run_hook() {
     local hook_cmd=$(basename $0)
     local git_root=$(git rev-parse --show-toplevel)
 
-    pushd $git_root >/dev/null
+    pushd "$git_root" >/dev/null
     local projects=$(find . -name package.json -print | grep -v node_modules | sed s/\.//)
     popd >/dev/null
 
