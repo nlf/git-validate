@@ -13,7 +13,7 @@ describe('validate', function () {
 
     it('runs', function (done) {
 
-        var validate = Spawn(Path.resolve(__dirname, '..', 'bin', 'validate'), [], { stdio: 'pipe' });
+        var validate = Spawn(Path.resolve(__dirname, '..', 'bin', 'validate.sh'), [], { stdio: 'pipe' });
 
         validate.on('close', function (code) {
 
