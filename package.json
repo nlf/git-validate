@@ -1,14 +1,10 @@
 {
   "name": "git-validate",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "the extensible core of precommit-hook",
   "main": "index.js",
-  "bin": {
-    "validate": "bin/validate"
-  },
   "scripts": {
-    "test": "lab -L -a code -t 100",
-    "bacon": "do stuff"
+    "test": "lab -L -a code -t 100"
   },
   "repository": {
     "type": "git",
@@ -30,7 +26,6 @@
     "code": "1.x.x",
     "lab": "5.x.x",
     "mkdirp": "^0.5.0",
-    "mock-fs": "^2.5.0",
     "rimraf": "2.x.x"
   }
 }
