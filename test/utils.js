@@ -42,7 +42,7 @@ internals.createFixture = function (done) {
 
     internals.mkdir('project1', 'not_a_project');
     internals.createFile('project1', 'package.json');
-    internals.mkdir('project2');
+    internals.mkdir('project2', '.git', 'hooks');
     internals.mkdir('project3', 'actual_project');
     internals.createFile('project3', 'actual_project', 'package.json');
     internals.mkdir('project4', 'this', 'is', 'too', 'deep', 'to', 'find');
@@ -201,4 +201,36 @@ describe('findProjects()', function () {
     });
 
     after(internals.cleanupFixture);
+});
+
+describe('installHooks()', function () {
+
+    beforeEach(internals.createFixture);
+
+    it('can install a single hook', function (done) {
+
+        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        done();
+    });
+
+    it('can install multiple hooks', function (done) {
+
+        Utils.installHooks(['pre-commit', 'post-commit'], Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'post-commit'))).to.be.true();
+        done();
+    });
+
+    it('backs up an existing hook when installing', function (done) {
+
+        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit.backup'))).to.be.true();
+        done();
+    });
+
+    afterEach(internals.cleanupFixture);
 });
