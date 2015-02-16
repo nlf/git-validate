@@ -237,7 +237,7 @@ run_script() {
 
     local script=$(find_script "$json" "$name")
     if [[ "$script" == "" ]] && [[ "$defaults" != "" ]]; then
-        script=$(find_script "$_defaults" "$_name")
+        script=$(find_script "$defaults" "$name")
     fi
 
     if [[ "$script" == "" ]]; then
