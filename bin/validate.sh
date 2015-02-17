@@ -3,13 +3,11 @@
 # This section copied from github.com/dominictarr/JSON.sh and simplified a bit
 ##############################################################################
 throw() {
-
     echo "$*" >&2
     exit 1
 }
 
 awk_egrep() {
-
     local pattern_string=$1
     gawk '{
         while ($0) {
@@ -22,7 +20,6 @@ awk_egrep() {
 }
 
 tokenize() {
-    
     local GREP
     local ESCAPE
     local CHAR
@@ -51,7 +48,6 @@ tokenize() {
 }
 
 parse_array() {
-
     local index=0
     local ary=''
     
@@ -87,7 +83,6 @@ parse_array() {
 }
 
 parse_object() {
-
     local key
     local obj=''
     read -r token
@@ -143,7 +138,6 @@ parse_object() {
 }
 
 parse_value() {
-
     local jpath="${1:+$1,}$2"
     local isleaf=0
     local isempty=0
@@ -172,7 +166,6 @@ parse_value() {
 }
 
 parse() {
-
     read -r token
     parse_value
 
@@ -187,7 +180,6 @@ parse() {
 }
 
 parse_json() {
-
     tokenize | parse
 }
 ##############################################################################
@@ -195,7 +187,6 @@ parse_json() {
 
 # Search parsed JSON for a named script, return the script as a string
 find_script() {
-
     local json=$1
     local name=$2
     local script=""
@@ -228,7 +219,6 @@ find_script() {
 
 # Run the named script, searches both package.json and .validate.json
 run_script() {
-
     local defaults=$1
     local json=$2
     local name=$3
@@ -258,7 +248,6 @@ run_script() {
 }
 
 find_commands() {
-
     local json=$1
     local commands=""
 
@@ -284,7 +273,6 @@ find_commands() {
 
 # Finds the appropriate commands to run for a project and runs them
 check_project() {
-
     local package=$1
     local dir=$(dirname "$package")
     local json=$(cat "$package" | parse_json)
@@ -319,7 +307,6 @@ check_project() {
 
 # Find all projects in the current repo and check each one
 run_hook() {
-
     # Guard to avoid running hooks when rebasing, just exit with success immediately
     if [[ $(git branch | grep '*' | sed 's/* //') == "(no branch)" ]]; then
         exit 0
