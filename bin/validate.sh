@@ -275,11 +275,19 @@ find_commands() {
 check_project() {
     local package=$1
     local dir=$(dirname "$package")
-    local json=$(cat "$package" | parse_json)
-    local defaults=""
+    local json; json=$(cat "$package" | parse_json)
+    if [[ $? -ne 0 ]]; then
+        echo "failed parsing $package.. exiting"
+        exit 1
+    fi
 
+    local defaults=""
     if [[ -f "$dir/.validate.json" ]]; then
         defaults=$(cat "$dir/.validate.json" | parse_json)
+        if [[ $? -ne 0 ]]; then
+            echo "failed parsing $dir/.validate.json.. exiting"
+            exit 1
+        fi
     fi
 
     local commands=$(find_commands "$json")
@@ -313,7 +321,11 @@ run_hook() {
     fi
 
     local hook_cmd=$(basename $0)
-    local git_root=$(git rev-parse --show-toplevel)
+    local git_root; git_root=$(git rev-parse --show-toplevel)
+    if [[ $? -ne 0 ]]; then
+        echo "this does not look like a git repository.. exiting"
+        exit 0
+    fi
 
     pushd "$git_root" >/dev/null
     local projects=$(find . -name package.json -print | grep -v node_modules | sed s/\.//)
