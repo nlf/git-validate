@@ -89,9 +89,11 @@ Now when a user tries to run `git commit` **git-validate** will open `.validate.
 
 ## The Details
 
-### Copy
+**git-validate** exports a few methods to be used for creating your custom hooks.
 
-**git-validate** exports a `copy` method. This is the only exported method you should ever need. It has the signature:
+### `copy`
+
+Copy a file or directory from your hook to a target project.
 
 ```javascript
 Validate.copy(source, target, options);
@@ -104,20 +106,34 @@ bin/install
 jshintrc
 ```
 
-And I wish for the file `jshintrc` to be placed in the root of projects as `.jshintrc`, I would call `Validate.copy('../jshintrc', '.jshintrc')`.
+And I wish for the file `jshintrc` to be placed in the root of projects as `.jshintrc` when running `bin/install`, I would call `Validate.copy('../jshintrc', '.jshintrc')`.
 
 Note that `source` may be a file *or* a directory. If a directory is specified than a new directory will be created at `target` and the *full contents* of source will be copied to the `target` directory recursively.
 
 The only `option` currently available is `overwrite`. When set to `true` overwrite will *always* copy the given file, overwriting any existing destination file. If this is not set, `copy` will instead silently fail and leave the old file in place. I *highly* recommend always using `{ overwrite: true }` on your `.validate.json` file.
 
 
+### `installHooks`
+
+Install one or more git hooks to the current repo.
+
+```javascript
+Validate.installHooks('pre-commit');
+Validate.installHooks(['pre-commit', 'pre-push']);
+```
+
+This method will copy the hook script to the appropriate path in your repo's `.git/hooks` path.
+
+
+## Configuration
+
 ### `.validate.json`
 
-This is the file that configures the git hooks. It currently supports two keys, `scripts` and `pre-commit`.
+This is the file that configures defaults for your git hooks.
 
 The `scripts` property should be an object with named scripts, exactly the same as the `scripts` property in your `package.json`. This gives you a place to define some default scripts to be used in your hooks. Note that any script defined in your `package.json` will take precedence over one defined in `.validate.json`. This is what makes it safe to always overwrite `.validate.json` with the newest possible copy, since if your project requires changes to the scripts, you can make them in `package.json` instead.
 
-The `pre-commit` key must be an array of script names to be run. If any of the scripts are not defined, they will be skipped and a message will be printed showing that no script was found, as such it is safe to set scripts here that you wish to always be custom in every project. The `.validate.json` file for [precommit-hook](https://github.com/nlf/precommit-hook) looks like this:
+In addition to the `scripts` property, this file will be parsed and checked for keys matching the name of your git hooks (e.g. `pre-commit`, `pre-push`, etc) and used to provide a default list of hooks to be run for each hook. The keys must be an array of script names to be run. If any of the scripts are not defined, they will be skipped and a message will be printed showing that no script was found, as such it is safe to set scripts here that you wish to always be custom in every project. The `.validate.json` file for [precommit-hook](https://github.com/nlf/precommit-hook) looks like this:
 
 
 ```javascript
