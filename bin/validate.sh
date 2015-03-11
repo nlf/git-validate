@@ -305,7 +305,7 @@ check_project() {
     for cmd in $commands; do
         run_script "$defaults" "$json" "$cmd"
         local result=$?
-        [[ $result != 0 ]] && break
+        [[ $result -ne 0 ]] && break
     done
 
     popd >/dev/null
@@ -336,7 +336,7 @@ run_hook() {
     for project in $projects; do
         check_project "$git_root$project"
         result=$?
-        [[ $result -eq 0 ]] && break
+        [[ $result -ne 0 ]] && break
     done
 
     return $result
