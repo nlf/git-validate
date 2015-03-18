@@ -236,7 +236,7 @@ run_script() {
     fi
 
     local output=""
-    output=$(PATH=$PATH:./node_modules/.bin $script 2>&1)
+    output=$(PATH=$PATH:./node_modules/.bin eval $script 2>&1)
     local result=$?
     if [[ $result -ne 0 ]]; then
         echo "failed!"
