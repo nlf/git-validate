@@ -249,24 +249,33 @@ run_script() {
 
 find_commands() {
     local json=$1
-    local commands=""
+    local branch=$2
 
-    local oifs="${IFS}"
-    IFS=$'\n'
-
-    for line in $json; do
-        IFS="${oifs}"
-
-        echo "$line" | grep "\[\"$hook_cmd\"" 2>&1 >/dev/null
-        if [[ $? -eq 0 ]]; then
-            local match=$(echo $line | sed -n "s/\[\"$hook_cmd\",[0-9]*\] \"\([^\"]*\)\"/\1/p")
-            commands="$commands $match"
-        fi
-
+    _find_commands() {
+        local cmd=$1
+        local commands=""
+        local oifs="${IFS}"
         IFS=$'\n'
-    done
 
-    IFS="${oifs}"
+        for line in $json; do
+            IFS="${oifs}"
+
+            echo "$line" | grep "\[\"$cmd\"" 2>&1 >/dev/null
+            if [[ $? -eq 0 ]]; then
+                local match=$(echo $line | sed -n "s/\[\"$cmd\",[0-9]*\] \"\([^\"]*\)\"/\1/p")
+                commands="$commands $match"
+            fi
+
+            IFS=$'\n'
+        done
+        IFS="${oifs}"
+        echo "$commands"
+    }
+
+    local commands=$(_find_commands "$hook_cmd#$branch")
+    if [[ "$commands" == "" ]]; then
+        commands=$(_find_commands "$hook_cmd")
+    fi
 
     echo "$commands"
 }
@@ -290,20 +299,22 @@ check_project() {
         fi
     fi
 
-    local commands=$(find_commands "$json")
+    pushd "$dir" >/dev/null
+    local branch=$(git rev-parse --abbrev-ref HEAD)
+
+    local commands=$(find_commands "$json" "$branch")
     if [[ "$commands" == "" ]] && [[ "$defaults" != "" ]]; then
-        commands=$(find_commands "$defaults")
+        commands=$(find_commands "$defaults" "$branch")
     fi
 
     if [[ "$commands" == "" ]]; then
         echo "no checks for $hook_cmd found.. skipping"
+        popd >/dev/null
         return 0
     fi
 
-    pushd "$dir" >/dev/null
-
     for cmd in $commands; do
-        run_script "$defaults" "$json" "$cmd"
+        run_script "$defaults" "$json" "$cmd" "$branch"
         local result=$?
         [[ $result -ne 0 ]] && break
     done

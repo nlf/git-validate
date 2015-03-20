@@ -144,3 +144,16 @@ In addition to the `scripts` property, this file will be parsed and checked for 
   "pre-commit": ["lint", "validate", "test"]
 }
 ```
+
+### per-branch hooks
+
+It is also possible to run scripts only for a specific branch by specifying the key in your `package.json` as `hook-name#branch`:
+
+```javascript
+{
+  "pre-commit": ["lint", "test"],
+  "pre-commit#dev": ["lint"]
+}
+```
+
+In the above example, when run in the `dev` branch only the `lint` script will be run, however in all other branches both `lint` and `test` will be run.
