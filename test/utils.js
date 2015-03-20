@@ -182,6 +182,16 @@ describe('findProjectRoot()', function () {
         done();
     });
 
+    it('can return an error when no project is found', function (done) {
+
+        var root = Path.resolve(__dirname, '..', '..');
+        expect(function () {
+
+            Utils.findProjectRoot(root);
+        }).to.throw('Unable to find a package.json for this project');
+        done();
+    });
+
     after(internals.cleanupFixture);
 });
 
