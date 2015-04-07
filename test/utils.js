@@ -157,9 +157,12 @@ describe('findGitRoot()', function () {
         done();
     });
 
-    it('returns undefined when no git root exists', function (done) {
+    it('can return an error when no git root exists', function (done) {
 
-        expect(Utils.findGitRoot(Path.resolve(__dirname, '..', '..'))).to.be.undefined();
+        expect(function () {
+
+            Utils.findGitRoot(Path.resolve(__dirname, '..', '..'));
+	}).to.throw('Unable to find a .git folder for this project');
         done();
     });
 });
