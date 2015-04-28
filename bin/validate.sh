@@ -300,7 +300,11 @@ check_project() {
     fi
 
     pushd "$dir" >/dev/null
-    local branch=$(git rev-parse --abbrev-ref HEAD)
+    local branch; branch=$(git rev-parse --abbrev-ref HEAD)
+    if [[ $? -ne 0 ]]; then
+        popd >/dev/null
+        return 0
+    fi
 
     local commands=$(find_commands "$json" "$branch")
     if [[ "$commands" == "" ]] && [[ "$defaults" != "" ]]; then
@@ -308,7 +312,6 @@ check_project() {
     fi
 
     if [[ "$commands" == "" ]]; then
-        echo "no checks for $hook_cmd found.. skipping"
         popd >/dev/null
         return 0
     fi
