@@ -300,7 +300,7 @@ check_project() {
     fi
 
     pushd "$dir" >/dev/null
-    local branch; branch=$(git rev-parse --abbrev-ref HEAD)
+    local branch; branch=$(git rev-parse --abbrev-ref HEAD 2>&1)
     if [[ $? -ne 0 ]]; then
         popd >/dev/null
         return 0
