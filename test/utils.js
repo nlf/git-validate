@@ -35,7 +35,7 @@ internals.createFile = function (path) {
         args.push(arguments[i]);
     }
 
-    Fs.writeFileSync(Path.join.apply(null, args), '', 'utf8');
+    Fs.writeFileSync(Path.join.apply(null, args), '{}', { encoding: 'utf8' });
 };
 
 internals.createFixture = function (done) {
@@ -43,6 +43,7 @@ internals.createFixture = function (done) {
     internals.mkdir('project1', 'not_a_project');
     internals.createFile('project1', 'package.json');
     internals.mkdir('project2', '.git', 'hooks');
+    internals.createFile('project2', 'package.json');
     internals.mkdir('project3', 'actual_project');
     internals.createFile('project3', 'actual_project', 'package.json');
     internals.mkdir('project4', 'this', 'is', 'too', 'deep', 'to', 'find');
@@ -162,7 +163,7 @@ describe('findGitRoot()', function () {
         expect(function () {
 
             Utils.findGitRoot(Path.resolve(__dirname, '..', '..'));
-	}).to.throw('Unable to find a .git folder for this project');
+        }).to.throw('Unable to find a .git folder for this project');
         done();
     });
 });
@@ -206,9 +207,10 @@ describe('findProjects()', function () {
 
         var projects = Utils.findProjects();
         expect(projects).to.be.an.array();
-        expect(projects).to.have.length(3);
+        expect(projects).to.have.length(4);
         expect(projects).to.contain(Path.dirname(__dirname));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project1'));
+        expect(projects).to.contain(Path.join(internals.fixturePath, 'project2'));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project3', 'actual_project'));
         done();
     });
@@ -216,32 +218,90 @@ describe('findProjects()', function () {
     after(internals.cleanupFixture);
 });
 
-describe('installHooks()', function () {
+describe('installHook()', function () {
 
     beforeEach(internals.createFixture);
 
-    it('can install a single hook', function (done) {
+    it('can install a hook', function (done) {
 
-        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', null, Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
-        done();
-    });
-
-    it('can install multiple hooks', function (done) {
-
-        Utils.installHooks(['pre-commit', 'post-commit'], Path.join(internals.fixturePath, 'project2'));
-        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
-        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'post-commit'))).to.be.true();
         done();
     });
 
     it('backs up an existing hook when installing', function (done) {
 
-        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', null, Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
-        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', null, Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit.backup'))).to.be.true();
+        done();
+    });
+
+    it('can install a hook with defaults as a string', function (done) {
+
+        Utils.installHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackage['pre-commit']).to.deep.equal(['test']);
+        done();
+    });
+
+    it('can install a hook with defaults as an array', function (done) {
+
+        Utils.installHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackage['pre-commit']).to.deep.equal(['lint', 'test']);
+        done();
+    });
+
+    it('won\'t overwrite existing hook settings', function (done) {
+
+        Utils.installHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageOne['pre-commit']).to.deep.equal(['test']);
+        Utils.installHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
+        var fixturePackageTwo = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageTwo['pre-commit']).to.deep.equal(['test']);
+        done();
+    });
+
+    afterEach(internals.cleanupFixture);
+});
+
+describe('installScript()', function () {
+
+    beforeEach(internals.createFixture);
+
+    it('can install a script', function (done) {
+
+        Utils.installScript('test', 'lab -a code -L', Path.join(internals.fixturePath, 'project2'));
+        var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackage).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
+        done();
+    });
+
+    it('can install a script to an existing scripts object', function (done) {
+
+        var packagePath = Path.join(internals.fixturePath, 'project2', 'package.json');
+        Fs.writeFileSync(packagePath, '{"scripts":{}}', { encoding: 'utf8' });
+        Utils.installScript('test', 'lab -a code -L', Path.join(internals.fixturePath, 'project2'));
+        var fixturePackage = JSON.parse(Fs.readFileSync(packagePath, { encoding: 'utf8' }));
+        expect(fixturePackage).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
+        done();
+    });
+
+    it('does not overwrite an existing script', function (done) {
+
+        Utils.installScript('test', 'lab -a code -L', Path.join(internals.fixturePath, 'project2'));
+        var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageOne).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
+        Utils.installScript('test', 'mocha', Path.join(internals.fixturePath, 'project2'));
+        var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackage).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
         done();
     });
 

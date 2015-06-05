@@ -219,16 +219,12 @@ find_script() {
 
 # Run the named script, searches both package.json and .validate.json
 run_script() {
-    local defaults=$1
-    local json=$2
-    local name=$3
+    local json=$1
+    local name=$2
 
     echo -n "running $name..."
 
     local script=$(find_script "$json" "$name")
-    if [[ "$script" == "" ]] && [[ "$defaults" != "" ]]; then
-        script=$(find_script "$defaults" "$name")
-    fi
 
     if [[ "$script" == "" ]]; then
         echo "not found!"
@@ -290,15 +286,6 @@ check_project() {
         exit 1
     fi
 
-    local defaults=""
-    if [[ -f "$dir/.validate.json" ]]; then
-        defaults=$(cat "$dir/.validate.json" | parse_json)
-        if [[ $? -ne 0 ]]; then
-            echo "failed parsing $dir/.validate.json.. exiting"
-            exit 1
-        fi
-    fi
-
     pushd "$dir" >/dev/null
     local branch; branch=$(git rev-parse --abbrev-ref HEAD 2>&1)
     if [[ $? -ne 0 ]]; then
@@ -307,9 +294,6 @@ check_project() {
     fi
 
     local commands=$(find_commands "$json" "$branch")
-    if [[ "$commands" == "" ]] && [[ "$defaults" != "" ]]; then
-        commands=$(find_commands "$defaults" "$branch")
-    fi
 
     if [[ "$commands" == "" ]]; then
         popd >/dev/null
@@ -317,7 +301,7 @@ check_project() {
     fi
 
     for cmd in $commands; do
-        run_script "$defaults" "$json" "$cmd" "$branch"
+        run_script "$json" "$cmd" "$branch"
         local result=$?
         [[ $result -ne 0 ]] && break
     done
