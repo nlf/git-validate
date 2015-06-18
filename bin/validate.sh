@@ -326,7 +326,7 @@ run_hook() {
     fi
 
     pushd "$git_root" >/dev/null
-    local projects=$(find . -maxdepth 3 -name package.json -print | grep -v node_modules | sed s/\.//)
+    local projects=$(find . -not -iwholename '*node_modules*' -not -iwholename '*bower_components*' -maxdepth 3 -name package.json -print | sed s/\.//)
     popd >/dev/null
 
     local result=0

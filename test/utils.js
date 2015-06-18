@@ -224,24 +224,32 @@ describe('installHook()', function () {
 
     it('can install a hook', function (done) {
 
-        Utils.installHook('pre-commit', null, Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         done();
     });
 
     it('backs up an existing hook when installing', function (done) {
 
-        Utils.installHook('pre-commit', null, Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
-        Utils.installHook('pre-commit', null, Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit.backup'))).to.be.true();
         done();
     });
 
+    afterEach(internals.cleanupFixture);
+});
+
+describe('configureHook()', function () {
+
+    beforeEach(internals.createFixture);
+
     it('can install a hook with defaults as a string', function (done) {
 
-        Utils.installHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage['pre-commit']).to.deep.equal(['test']);
@@ -250,7 +258,8 @@ describe('installHook()', function () {
 
     it('can install a hook with defaults as an array', function (done) {
 
-        Utils.installHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage['pre-commit']).to.deep.equal(['lint', 'test']);
@@ -259,11 +268,12 @@ describe('installHook()', function () {
 
     it('won\'t overwrite existing hook settings', function (done) {
 
-        Utils.installHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
+        Utils.installHook('pre-commit', Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackageOne['pre-commit']).to.deep.equal(['test']);
-        Utils.installHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
         var fixturePackageTwo = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackageTwo['pre-commit']).to.deep.equal(['test']);
         done();
