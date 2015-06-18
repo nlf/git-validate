@@ -1,6 +1,6 @@
 {
   "name": "git-validate",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "description": "the extensible core of precommit-hook",
   "main": "index.js",
   "scripts": {
