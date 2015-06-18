@@ -1,3 +1,4 @@
+var ChildProcess = require('child_process');
 var Utils = require('../lib/utils');
 var Fs = require('fs');
 var Path = require('path');
@@ -158,13 +159,14 @@ describe('findGitRoot()', function () {
         done();
     });
 
-    it('can return an error when no git root exists', function (done) {
+    it('logs an error and exits cleanly when no git root is found', function (done) {
 
-        expect(function () {
+        ChildProcess.exec('node -e \'var path = require("path"); var utils = require("./lib/utils"); utils.findGitRoot(path.resolve(__dirname, "..", ".."));\'', function (err, stdout, stderr) {
 
-            Utils.findGitRoot(Path.resolve(__dirname, '..', '..'));
-        }).to.throw('Unable to find a .git folder for this project');
-        done();
+            expect(err).to.not.exist();
+            expect(stderr).to.equal('WARNING: Unable to find a .git folder for this project, installation aborted.\n');
+            done();
+        });
     });
 });
 
@@ -188,12 +190,12 @@ describe('findProjectRoot()', function () {
 
     it('can return an error when no project is found', function (done) {
 
-        var root = Path.resolve(__dirname, '..', '..');
-        expect(function () {
+        ChildProcess.exec('node -e \'var path = require("path"); var utils = require("./lib/utils"); utils.findProjectRoot(path.resolve(__dirname, "..", ".."));\'', function (err, stdout, stderr) {
 
-            Utils.findProjectRoot(root);
-        }).to.throw('Unable to find a package.json for this project');
-        done();
+            expect(err).to.not.exist();
+            expect(stderr).to.equal('WARNING: Unable to find a package.json for this project, installation aborted.\n');
+            done();
+        });
     });
 
     after(internals.cleanupFixture);
