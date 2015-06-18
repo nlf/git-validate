@@ -65,26 +65,16 @@ Now we edit our `package.json` to tell it about our install script:
 
 And that's it for the simplest possible example. Now anytime you install `validate-nlf` you'll automatically get a `.jshintrc` file in your project.
 
-This wouldn't be any fun without the git hooks though, so let's extend it a bit further to make sure that `jshint` is run any time a user tries to `git commit` after installing our module. To do so, let's create a `validate.json` file with the following contents:
+This wouldn't be any fun without the git hooks though, so let's extend it a bit further to make sure that `jshint` is run any time a user tries to `git commit` after installing our module. We can do that by configuring the hook in our install script like so:
 
 ```javascript
-{
-  "scripts": {
-    "lint": "jshint ."
-  },
-  "pre-commit": ["lint"]
-}
+Validate.installScript('lint', 'jshint .');
+Validate.configureHook('pre-commit', ['lint']);
 ```
 
-And then let's add a line to our install.js to make sure it gets installed as `.validate.json` (note the leading dot).
+Great, that's it!
 
-```javascript
-Validate.copy('validate.json', '.validate.json', { overwrite: true });
-```
-
-Great, that's it! You'll notice the `{ overwrite: true }` object as the last parameter to `copy`. This tells **git-validate** that it's ok to overwrite an existing file. Without that option, the copy method would fail silently if the file already exists. That's why we didn't use it for our `.jshintrc` because that's something a user should be able to configure.
-
-Now when a user tries to run `git commit` **git-validate** will open `.validate.json` and see that the `pre-commit` event wants to run the `lint` script. It will load your project's `package.json` to see if you have a `lint` script defined there first. If you do not, it will use the `lint` script present in the `.validate.json` file and run it. If the script fails, the commit is denied. Easy!
+Now when a user installs your package the `installScript` method will see if they already have a script in their package.json named `lint`, if they do not it will add one that runs `"jshint ."`. The second line will also check their package.json for a `pre-commit` key, which is used to configure that specific git hook. If the key does not exist, it will be added with the value `["lint"]` telling git-validate to run the "lint" script on `pre-commit`.
 
 
 ## The Details
@@ -110,7 +100,7 @@ And I wish for the file `jshintrc` to be placed in the root of projects as `.jsh
 
 Note that `source` may be a file *or* a directory. If a directory is specified than a new directory will be created at `target` and the *full contents* of source will be copied to the `target` directory recursively.
 
-The only `option` currently available is `overwrite`. When set to `true` overwrite will *always* copy the given file, overwriting any existing destination file. If this is not set, `copy` will instead silently fail and leave the old file in place. I *highly* recommend always using `{ overwrite: true }` on your `.validate.json` file.
+The only `option` currently available is `overwrite`. When set to `true` overwrite will *always* copy the given file, overwriting any existing destination file. If this is not set, `copy` will instead silently fail and leave the old file in place.
 
 
 ### `installHooks`
@@ -124,30 +114,52 @@ Validate.installHooks(['pre-commit', 'pre-push']);
 
 This method will copy the hook script to the appropriate path in your repo's `.git/hooks` path.
 
+### `configureHook`
 
-## Configuration
+Provide a default configuration for a given hook.
 
-### `.validate.json`
+```javascript
+Validate.configureHook('pre-commit', ['lint', 'test']);
+```
 
-This is the file that configures defaults for your git hooks.
+would write
 
-The `scripts` property should be an object with named scripts, exactly the same as the `scripts` property in your `package.json`. This gives you a place to define some default scripts to be used in your hooks. Note that any script defined in your `package.json` will take precedence over one defined in `.validate.json`. This is what makes it safe to always overwrite `.validate.json` with the newest possible copy, since if your project requires changes to the scripts, you can make them in `package.json` instead.
+```javascript
+{
+  "pre-commit": ["lint", "test"]
+}
+```
 
-In addition to the `scripts` property, this file will be parsed and checked for keys matching the name of your git hooks (e.g. `pre-commit`, `pre-push`, etc) and used to provide a default list of hooks to be run for each hook. The keys must be an array of script names to be run. If any of the scripts are not defined, they will be skipped and a message will be printed showing that no script was found, as such it is safe to set scripts here that you wish to always be custom in every project. The `.validate.json` file for [precommit-hook](https://github.com/nlf/precommit-hook) looks like this:
+to your package.json, but *only* if the `"pre-commit"` key was not already set.
 
+### `installScript`
+
+Configure a script (if it is not already configured) for the project via package.json.
+
+```javascript
+Validate.installScript('test', 'lab -a code');
+```
+
+would write
 
 ```javascript
 {
   "scripts": {
-    "lint": "jshint ."
-  },
-  "pre-commit": ["lint", "validate", "test"]
+    "test": "lab -a code"
+  }
 }
 ```
 
+to your package.json. If the `"test"` script was already defined, this method will do nothing.
+
+
+## Configuration
+
+In addition to the `scripts` property, your package.json file will be parsed and checked for keys matching the name of your git hooks (e.g. `pre-commit`, `pre-push`, etc) and used to provide a list of hooks to be run for each hook. The keys must be an array of script names to be run. If any of the scripts are not defined, they will be skipped and a message will be printed showing that no script was found.
+
 ### per-branch hooks
 
-It is also possible to run scripts only for a specific branch by specifying the key in your `package.json` as `hook-name#branch`:
+It is possible to run scripts only for a specific branch by specifying the key in your `package.json` as `hook-name#branch`:
 
 ```javascript
 {

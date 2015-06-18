@@ -11,5 +11,4 @@ catch (e) {
 }
 
 var project = JSON.parse(Fs.readFileSync(Path.join(projectRoot, 'package.json'), 'utf8'));
-Utils.installHook('pre-commit');
-Utils.installHook('pre-push');
+Utils.installHooks(['pre-commit', 'pre-push']);
