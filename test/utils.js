@@ -164,7 +164,7 @@ describe('findGitRoot()', function () {
         ChildProcess.exec('node -e \'var path = require("path"); var utils = require("./lib/utils"); utils.findGitRoot(path.resolve(__dirname, "..", ".."));\'', function (err, stdout, stderr) {
 
             expect(err).to.not.exist();
-            expect(stderr).to.equal('WARNING: Unable to find a .git folder for this project, installation aborted.\n');
+            expect(stderr).to.equal('WARNING: Unable to find a .git directory for this project, installation aborted.\n');
             done();
         });
     });
