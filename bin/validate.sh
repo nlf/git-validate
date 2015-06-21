@@ -326,9 +326,9 @@ run_hook() {
     fi
 
     pushd "$git_root" >/dev/null
-    local projects; projects=$(find . -not -iwholename '*node_modules*' -not -iwholename '*bower_components*' -maxdepth 3 -name package.json -print >/dev/null 2>&1)
+    local projects; projects=$(find . -not -iwholename '*node_modules*' -not -iwholename '*bower_components*' -maxdepth 3 -name package.json -print 2>/dev/null)
     if [[ $? -ne 0 ]]; then
-        projects=$(find . -not -ipath '*node_modules*' -not -ipath '*bower_components*' -maxdepth 3 -name package.json -print >/dev/null 2>&1)
+        projects=$(find . -not -ipath '*node_modules*' -not -ipath '*bower_components*' -maxdepth 3 -name package.json -print 2>/dev/null)
     fi
     projects=$(echo "$projects" | sed s/\.//)
     popd >/dev/null
