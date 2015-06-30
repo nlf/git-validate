@@ -49,6 +49,8 @@ internals.createFixture = function (done) {
     internals.createFile('project3', 'actual_project', 'package.json');
     internals.mkdir('project4', 'this', 'is', 'too', 'deep', 'to', 'find');
     internals.createFile('project4', 'this', 'is', 'too', 'deep', 'to', 'find', 'package.json');
+    internals.mkdir('project5', '.git');
+    internals.createFile('project5', 'package.json');
     done();
 };
 
@@ -209,7 +211,7 @@ describe('findProjects()', function () {
 
         var projects = Utils.findProjects();
         expect(projects).to.be.an.array();
-        expect(projects).to.have.length(4);
+        expect(projects).to.have.length(5);
         expect(projects).to.contain(Path.dirname(__dirname));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project1'));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project2'));
@@ -228,6 +230,13 @@ describe('installHooks()', function () {
 
         Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        done();
+    });
+
+    it('can install a hook to a .git directory without hooks subdir', function (done) {
+
+        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project5'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project5', '.git', 'hooks', 'pre-commit'))).to.be.true();
         done();
     });
 
