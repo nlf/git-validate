@@ -44,7 +44,8 @@ tokenize() {
     local KEYWORD='null|false|true'
     local SPACE='[[:space:]]+'
     
-    sed 's/$//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
+    sed 's/
+$//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
 }
 
 parse_array() {
@@ -287,7 +288,7 @@ check_project() {
     fi
 
     pushd "$dir" >/dev/null
-    local branch; branch=$(git rev-parse --abbrev-ref HEAD 2>&1)
+    local branch; branch=$(env -i git rev-parse --abbrev-ref HEAD 2>&1)
     if [[ $? -ne 0 ]]; then
         popd >/dev/null
         return 0
@@ -319,7 +320,7 @@ run_hook() {
     fi
 
     local hook_cmd=$(basename $0)
-    local git_root; git_root=$(git rev-parse --show-toplevel)
+    local git_root; git_root=$(env -i git rev-parse --show-toplevel)
     if [[ $? -ne 0 ]]; then
         echo "this does not look like a git repository.. exiting"
         exit 0
