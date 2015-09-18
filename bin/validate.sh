@@ -44,8 +44,7 @@ tokenize() {
     local KEYWORD='null|false|true'
     local SPACE='[[:space:]]+'
     
-    sed 's/
-$//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
+    sed 's/\r//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
 }
 
 parse_array() {
