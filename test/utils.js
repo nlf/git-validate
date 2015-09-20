@@ -307,7 +307,7 @@ describe('installScript()', function () {
 
     it('can install a script', function (done) {
 
-        Utils.installScript('test', 'lab -a code -L', undefined, Path.join(internals.fixturePath, 'project2'));
+        Utils.installScript('test', 'lab -a code -L', Path.join(internals.fixturePath, 'project2'));
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
         done();
@@ -317,7 +317,7 @@ describe('installScript()', function () {
 
         var packagePath = Path.join(internals.fixturePath, 'project2', 'package.json');
         Fs.writeFileSync(packagePath, '{"scripts":{}}', { encoding: 'utf8' });
-        Utils.installScript('test', 'lab -a code -L', undefined, Path.join(internals.fixturePath, 'project2'));
+        Utils.installScript('test', 'lab -a code -L', Path.join(internals.fixturePath, 'project2'));
         var fixturePackage = JSON.parse(Fs.readFileSync(packagePath, { encoding: 'utf8' }));
         expect(fixturePackage).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
         done();
@@ -325,10 +325,10 @@ describe('installScript()', function () {
 
     it('does not overwrite an existing script', function (done) {
 
-        Utils.installScript('test', 'lab -a code -L', undefined, Path.join(internals.fixturePath, 'project2'));
+        Utils.installScript('test', 'lab -a code -L', Path.join(internals.fixturePath, 'project2'));
         var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackageOne).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
-        Utils.installScript('test', 'mocha', undefined, Path.join(internals.fixturePath, 'project2'));
+        Utils.installScript('test', 'mocha', Path.join(internals.fixturePath, 'project2'));
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
         done();
