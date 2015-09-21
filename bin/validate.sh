@@ -23,7 +23,7 @@ tokenize() {
     local GREP
     local ESCAPE
     local CHAR
-    
+
     if echo "test string" | grep -ao --color=never "test" &>/dev/null; then
         GREP="egrep -ao --color=never"
     else
@@ -43,14 +43,14 @@ tokenize() {
     local NUMBER='-?(0|[1-9][0-9]*)([.][0-9]*)?([eE][+-]?[0-9]*)?'
     local KEYWORD='null|false|true'
     local SPACE='[[:space:]]+'
-    
-    sed 's/\r//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
+
+    sed 's/\\r//' | $GREP "$STRING|$NUMBER|$KEYWORD|$SPACE|." | egrep -v "^$SPACE$"
 }
 
 parse_array() {
     local index=0
     local ary=''
-    
+
     read -r token
     case "$token" in
         ']')
@@ -86,7 +86,7 @@ parse_object() {
     local key
     local obj=''
     read -r token
-    
+
     case "$token" in
         '}')
             ;;
@@ -133,7 +133,7 @@ parse_object() {
             ;;
     esac
     value=
-    
+
     :
 }
 
@@ -141,7 +141,7 @@ parse_value() {
     local jpath="${1:+$1,}$2"
     local isleaf=0
     local isempty=0
-    
+
     case "$token" in
         '{')
             parse_object "$jpath"

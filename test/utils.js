@@ -334,5 +334,22 @@ describe('installScript()', function () {
         done();
     });
 
+    it('overwrite an existing script when option is specified', function (done) {
+
+        Utils.installScript('test', 'lab -a code -L', {}, Path.join(internals.fixturePath, 'project2'));
+        var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageOne).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
+
+        Utils.installScript('test', 'mocha', {}, Path.join(internals.fixturePath, 'project2'));
+        var fixturePackageTwo = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageTwo).to.deep.equal({ scripts: { test: 'lab -a code -L' } });
+
+        Utils.installScript('test', 'mocha', { overwrite: true }, Path.join(internals.fixturePath, 'project2'));
+        var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackage).to.deep.equal({ scripts: { test: 'mocha' } });
+
+        done();
+    });
+
     afterEach(internals.cleanupFixture);
 });
