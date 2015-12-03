@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+PATH=$PATH:/usr/local/bin:/usr/local/sbin
 
 # This section copied from github.com/dominictarr/JSON.sh and simplified a bit
 ##############################################################################
