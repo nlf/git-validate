@@ -200,7 +200,7 @@ find_script() {
         echo "$line" | grep '\["scripts"' 2>&1 >/dev/null
         if [[ $? -eq 0 ]]; then
             local script_name=""
-            local match=$(echo $line | sed -n 's/\["scripts","\([^"]*\)"\] "\([^"]*\)"/\1 \2/p')
+            local match=$(echo $line | sed -n 's/\["scripts","\([^"]*\)"\] "\(.*\)"/\1 \2/p')
 
             IFS=' ' read -r script_name string <<< $match
             if [[ "$script_name" == "$name" ]]; then
