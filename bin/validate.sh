@@ -288,7 +288,7 @@ check_project() {
 
     pushd "$dir" >/dev/null
     local branch;
-    if [[ "$OSTYPE" -eq "cygwin" || "$OSTYPE" -eq "msys" || "$OSTYPE" -eq "win32" ]]; then
+    if [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
       branch=$(git rev-parse --abbrev-ref HEAD 2>&1)
     else
       branch=$(env -i git rev-parse --abbrev-ref HEAD 2>&1)
@@ -325,7 +325,7 @@ run_hook() {
 
     local hook_cmd=$(basename $0)
     local git_root;
-    if [[ "$OSTYPE" -eq "cygwin" || "$OSTYPE" -eq "msys" || "$OSTYPE" -eq "win32" ]]; then
+    if [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
       git_root=$(git rev-parse --show-toplevel)
     else
       git_root=$(env -i git rev-parse --show-toplevel)
