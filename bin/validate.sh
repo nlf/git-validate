@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+PATH=`cat ./.git/hooks/systempath`
 
 # This section copied from github.com/dominictarr/JSON.sh and simplified a bit
 ##############################################################################
