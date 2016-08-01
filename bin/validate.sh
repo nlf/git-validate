@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Get the exported path from the default login shell. We ignore the stderr
+# because there's the potential errors and all we care about is the PATH.
+LOGIN_PATH="$(bash -lc 'echo "$PATH"' 2>/dev/null)"
+if [ "$LOGIN_PATH" != '' ]; then
+  PATH="$LOGIN_PATH"
+fi
+
 # This section copied from github.com/dominictarr/JSON.sh and simplified a bit
 ##############################################################################
 throw() {
