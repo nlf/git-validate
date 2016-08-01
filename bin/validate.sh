@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+PATH=`cat ./.git/hooks/systempath`
 
 # Get the exported path from the default login shell. We ignore the stderr
 # because there's the potential errors and all we care about is the PATH.
