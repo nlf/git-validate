@@ -130,7 +130,29 @@ would write
 }
 ```
 
-to your package.json, but *only* if the `"pre-commit"` key was not already set.
+to your package.json, but *only* if the `"pre-commit"` key was not already set, or you specify so explicitly:
+
+```javascript
+{
+  "pre-commit": ["test"]
+}
+```
+
+with:
+
+```javascript
+var overwrite = true;
+Validate.configureHook('pre-commit', ['lint', 'test'], overwrite);
+```
+
+would change package.json to:
+
+```javascript
+{
+  "pre-commit": ["lint", "test"]
+}
+```
+
 
 ### `installScript`
 
