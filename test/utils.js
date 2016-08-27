@@ -51,6 +51,8 @@ internals.createFixture = function (done) {
     internals.createFile('project4', 'this', 'is', 'too', 'deep', 'to', 'find', 'package.json');
     internals.mkdir('project5', '.git');
     internals.createFile('project5', 'package.json');
+    internals.mkdir('project6', '.git');
+    internals.createFile('project6', 'package.json');
     done();
 };
 
@@ -211,11 +213,12 @@ describe('findProjects()', function () {
 
         var projects = Utils.findProjects();
         expect(projects).to.be.an.array();
-        expect(projects).to.have.length(5);
+        expect(projects).to.have.length(6);
         expect(projects).to.contain(Path.dirname(__dirname));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project1'));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project2'));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project3', 'actual_project'));
+        expect(projects).to.contain(Path.join(internals.fixturePath, 'project6'));
         done();
     });
 
@@ -268,7 +271,7 @@ describe('configureHook()', function () {
     it('can install a hook with defaults as a string', function (done) {
 
         Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
-        Utils.configureHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', 'test', false, Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage['pre-commit']).to.deep.equal(['test']);
@@ -278,7 +281,7 @@ describe('configureHook()', function () {
     it('can install a hook with defaults as an array', function (done) {
 
         Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
-        Utils.configureHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', ['lint', 'test'], false, Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage['pre-commit']).to.deep.equal(['lint', 'test']);
@@ -288,13 +291,26 @@ describe('configureHook()', function () {
     it('won\'t overwrite existing hook settings', function (done) {
 
         Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
-        Utils.configureHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', 'test', false, Path.join(internals.fixturePath, 'project2'));
         expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
         var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackageOne['pre-commit']).to.deep.equal(['test']);
-        Utils.configureHook('pre-commit', ['lint', 'test'], Path.join(internals.fixturePath, 'project2'));
+        Utils.configureHook('pre-commit', ['lint', 'test'], false, Path.join(internals.fixturePath, 'project2'));
         var fixturePackageTwo = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackageTwo['pre-commit']).to.deep.equal(['test']);
+        done();
+    });
+
+    it('will overwrite existing hook settings if we say so', function (done) {
+
+        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project6'));
+        Utils.configureHook('pre-commit', 'test', true, Path.join(internals.fixturePath, 'project6'));
+        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project6', '.git', 'hooks', 'pre-commit'))).to.be.true();
+        var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project6', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageOne['pre-commit']).to.deep.equal(['test']);
+        Utils.configureHook('pre-commit', ['lint', 'bla'], true, Path.join(internals.fixturePath, 'project6'));
+        var fixturePackageTwo = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project6', 'package.json'), { encoding: 'utf8' }));
+        expect(fixturePackageTwo['pre-commit']).to.deep.equal(['lint', 'bla']);
         done();
     });
 
