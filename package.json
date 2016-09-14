@@ -1,10 +1,10 @@
 {
   "name": "git-validate",
-  "version": "2.1.4",
+  "version": "2.2.1",
   "description": "the extensible core of precommit-hook",
   "main": "index.js",
   "scripts": {
-    "test": "lab -L -a code -t 100",
+    "test": "lab -L --leaks -a code -t 100",
     "install": "node bin/install"
   },
   "repository": {
@@ -28,5 +28,8 @@
     "lab": "5.x.x",
     "mkdirp": "^0.5.0",
     "rimraf": "2.x.x"
-  }
+  },
+  "pre-commit": [
+    "test"
+  ]
 }
