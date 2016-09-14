@@ -28,5 +28,8 @@
     "lab": "5.x.x",
     "mkdirp": "^0.5.0",
     "rimraf": "2.x.x"
-  }
+  },
+  "pre-commit": [
+    "test"
+  ]
 }
