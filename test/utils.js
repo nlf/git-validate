@@ -211,7 +211,7 @@ describe('findProjects()', function () {
 
         var projects = Utils.findProjects();
         expect(projects).to.be.an.array();
-        expect(projects).to.have.length(6);
+        expect(projects).to.have.length(7);
         expect(projects).to.contain(Path.dirname(__dirname));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project1'));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project2'));
