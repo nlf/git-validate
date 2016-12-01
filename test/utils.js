@@ -29,30 +29,28 @@ internals.mkdir = function (path) {
     Mkdirp.sync(Path.join.apply(null, args));
 };
 
-internals.createFile = function (path) {
+internals.createFile = function (path, data) {
 
-    var args = [internals.fixturePath];
-    for (var i = 0, l = arguments.length; i < l; ++i) {
-        args.push(arguments[i]);
-    }
-
-    Fs.writeFileSync(Path.join.apply(null, args), '{}', { encoding: 'utf8' });
+    Fs.writeFileSync(Path.join.apply(null, [internals.fixturePath].concat(path)), data || '{}', { encoding: 'utf8' });
 };
 
 internals.createFixture = function (done) {
 
     internals.mkdir('project1', 'not_a_project');
-    internals.createFile('project1', 'package.json');
+    internals.createFile(['project1', 'package.json']);
     internals.mkdir('project2', '.git', 'hooks');
-    internals.createFile('project2', 'package.json');
+    internals.createFile(['project2', 'package.json']);
     internals.mkdir('project3', 'actual_project');
-    internals.createFile('project3', 'actual_project', 'package.json');
+    internals.createFile(['project3', 'actual_project', 'package.json']);
     internals.mkdir('project4', 'this', 'is', 'too', 'deep', 'to', 'find');
-    internals.createFile('project4', 'this', 'is', 'too', 'deep', 'to', 'find', 'package.json');
+    internals.createFile(['project4', 'this', 'is', 'too', 'deep', 'to', 'find', 'package.json']);
     internals.mkdir('project5', '.git');
-    internals.createFile('project5', 'package.json');
+    internals.createFile(['project5', 'package.json']);
     internals.mkdir('project6', '.git');
-    internals.createFile('project6', 'package.json');
+    internals.createFile(['project6', 'package.json']);
+    internals.mkdir('project7', '.git', 'hooks');
+    internals.createFile(['project7', 'package.json'], '    {}   \n');
+
     done();
 };
 
@@ -213,7 +211,7 @@ describe('findProjects()', function () {
 
         var projects = Utils.findProjects();
         expect(projects).to.be.an.array();
-        expect(projects).to.have.length(6);
+        expect(projects).to.have.length(7);
         expect(projects).to.contain(Path.dirname(__dirname));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project1'));
         expect(projects).to.contain(Path.join(internals.fixturePath, 'project2'));
@@ -288,19 +286,6 @@ describe('configureHook()', function () {
         done();
     });
 
-    it('won\'t overwrite existing hook settings', function (done) {
-
-        Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project2'));
-        Utils.configureHook('pre-commit', 'test', false, Path.join(internals.fixturePath, 'project2'));
-        expect(Fs.existsSync(Path.join(internals.fixturePath, 'project2', '.git', 'hooks', 'pre-commit'))).to.be.true();
-        var fixturePackageOne = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
-        expect(fixturePackageOne['pre-commit']).to.deep.equal(['test']);
-        Utils.configureHook('pre-commit', ['lint', 'test'], false, Path.join(internals.fixturePath, 'project2'));
-        var fixturePackageTwo = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
-        expect(fixturePackageTwo['pre-commit']).to.deep.equal(['test']);
-        done();
-    });
-
     it('will overwrite existing hook settings if we say so', function (done) {
 
         Utils.installHooks('pre-commit', Path.join(internals.fixturePath, 'project6'));
@@ -363,6 +348,18 @@ describe('installScript()', function () {
         Utils.installScript('test', 'mocha', { overwrite: true }, Path.join(internals.fixturePath, 'project2'));
         var fixturePackage = JSON.parse(Fs.readFileSync(Path.join(internals.fixturePath, 'project2', 'package.json'), { encoding: 'utf8' }));
         expect(fixturePackage).to.deep.equal({ scripts: { test: 'mocha' } });
+
+        done();
+    });
+
+    it('preserves whitespace in the package.json', function (done) {
+
+        Utils.configureHook('pre-commit', 'test', Path.join(internals.fixturePath, 'project7'));
+        var fixturePackage = Fs.readFileSync(Path.join(internals.fixturePath, 'project7', 'package.json'), { encoding: 'utf8' });
+
+        expect(fixturePackage.charAt(0)).to.not.equal('{');
+        expect(fixturePackage.charAt(0)).to.equal(' ');
+        expect(fixturePackage.charAt(fixturePackage.length - 1)).to.equal('\n');
 
         done();
     });
