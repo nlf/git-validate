@@ -1,4 +1,4 @@
-#git-validate
+# git-validate
 
 This is a super simple framework to facilitate creating your own modules similar to [precommit-hook](https://github.com/nlf/precommit-hook).
 
